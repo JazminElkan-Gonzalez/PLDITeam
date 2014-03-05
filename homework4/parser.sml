@@ -487,7 +487,8 @@ structure Parser =  struct
             | SOME (s,ts) => 
 	      (case parse_symList ts
                 of NONE => NONE
-                 | SOME (param,ts) => 
+                 | SOME (nil,ts) => NONE
+                 | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
                      of NONE => NONE
                       | SOME ts => 

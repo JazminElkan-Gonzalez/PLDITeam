@@ -18,6 +18,18 @@ structure Evaluator = struct
    *   Primitive operations
    *)
 
+
+  fun primCons a (I.VList xs) = I.VList (a::xs)
+    | primCons a _ = evalError "primCons"
+
+  fun primHd (I.VList []) = evalError "empty at PrimHd"
+    | primHd (I.VList (x::xs)) = x
+    | primHd _ = evalError "primHd"
+
+fun primTl (I.VList []) = I.VList []
+    | primTl (I.VList (x::xs)) = I.VList xs
+    | primTl _ = evalError "primTl"
+
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
     | primPlus _ _ = evalError "primPlus"
 
@@ -95,6 +107,21 @@ structure Evaluator = struct
 						 I.EIdent "a",
 						 I.EIdent "b")),
 			   [])),
+       ("hd", I.VClosure ("a", 
+                                I.EPrimCall1 (primHd,
+                                        I.EIdent "a"),
+                           [])),
+        ("tl", I.VClosure ("a", 
+                                I.EPrimCall1 (primTl,
+                                        I.EIdent "a"),
+                           [])),
+       ("cons", I.VClosure ("a", 
+                           I.EFun ("b", 
+                                   I.EPrimCall2 (primCons,
+                                                 I.EIdent "a",
+                                                 I.EIdent "b")),
+                           [])),
+        ("nil", I.VList []),
        ("equal", I.VClosure ("a",
 			  I.EFun ("b",
 				  I.EPrimCall2 (primEq,
