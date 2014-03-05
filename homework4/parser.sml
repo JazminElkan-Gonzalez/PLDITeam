@@ -387,7 +387,7 @@ structure Parser =  struct
       of NONE => NONE
        | SOME (e,ts) => 
          (case expect_COMMA ts
-            of NONE => NONE
+            of NONE => SOME (call2 "cons" e  (I.EVal (I.VList [])), ts)
              | SOME ts =>
                (case parse_expr_list ts
                  of NONE => NONE
@@ -545,7 +545,10 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          (case parse_expr_list ts
-           of NONE => NONE
+           of NONE =>  
+           (case expect_RBRACKET ts
+            of NONE => NONE 
+            | SOME ts => SOME (I.EVal (I.VList []), ts))
             | SOME (es, ts) =>
               (case expect_RBRACKET ts
                 of NONE => NONE
