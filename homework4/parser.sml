@@ -549,7 +549,7 @@ structure Parser =  struct
             | SOME (es, ts) =>
               (case expect_RBRACKET ts
                 of NONE => NONE
-                 | SOME ts => SOME (I.VList(es), ts))))
+                 | SOME ts => SOME (es, ts))))
 
 
 
