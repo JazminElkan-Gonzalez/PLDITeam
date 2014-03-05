@@ -328,22 +328,15 @@ structure Parser =  struct
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "equal" e1 e2, ts))))
 
-  and parse_symList ts =
-        (case expect_SYM ts
+  and parse_symList ts = 
+        (case expect_SYM ts 
           of NONE => NONE
-          | SOME (s,ts) =>
-          (case parse_symList_helper ts
-           of NONE => SOME ([s],ts)
-           | SOME (ss,ts) => SOME (s::ss,ts)))
- 
-  and parse_symList_helper ts =
-        (case expect_SYM ts
-          of NONE => NONE
-          | SOME (s,ts) =>
-          (case parse_symList_helper ts
-            of NONE => SOME ([s],ts)
-            | SOME (s1,ts) => SOME (s::s1,ts)))
-
+          | SOME (s1,ts) => 
+          (case parse_symList ts 
+           of NONE => SOME ([s1],ts)
+           | SOME (ss,ts) => SOME (s1::ss,ts)))
+           
+           
   and parse_eterm ts = 
       (case parse_cterm ts
 	of NONE => NONE
@@ -506,8 +499,13 @@ structure Parser =  struct
                                 | SOME ts => 
                                   (case parse_expr ts
                                     of NONE => NONE
-                                     | SOME (e2,ts) => 
-                                         SOME (I.ELetFun (s,param,e1,e2),ts))))))))
+                                    | SOME (e2,ts) => let 
+                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)
+                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
+                                          | paramFun _ = e1
+                                        in
+                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
+                                        end)))))))
 
 
 
