@@ -384,7 +384,7 @@ structure Parser =  struct
   (*Question 2c*)
   and parse_expr_list ts = 
     (case parse_expr ts
-      of NONE => NONE
+      of NONE => SOME (call2 "cons" nil nil,ts)
        | SOME (e,ts) => 
          (case expect_COMMA ts
             of NONE => SOME (call2 "cons" e  (I.EVal (I.VList [])), ts)
