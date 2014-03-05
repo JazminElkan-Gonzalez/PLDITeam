@@ -36,8 +36,21 @@ fun primTl (I.VList []) = I.VList []
   fun primMinus (I.VInt a) (I.VInt b) = I.VInt (a-b)
     | primMinus _ _ = evalError "primMinus"
 
-  fun primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
+
+
+  fun primEqHelper (I.VList []) (I.VList []) = true
+     | primEqHelper (I.VList (x::xs)) (I.VList []) = false
+     | primEqHelper (I.VList []) (I.VList (x::xs)) = false
+     | primEqHelper (I.VList (x::xs)) (I.VList (y::ys)) = 
+    (case (primEq x y) 
+        of (I.VBool false) => false 
+        | (I.VBool true) => (primEqHelper (I.VList xs) (I.VList ys))
+        | _ => evalError "how the fuck did you get here?????? primEqHelper")
+     | primEqHelper _ _ = evalError "primEqHelper"
+
+  and primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
     | primEq (I.VBool a) (I.VBool b) = I.VBool (a=b)
+    | primEq (I.VList (xs)) (I.VList (ys)) = I.VBool (primEqHelper (I.VList xs) (I.VList ys)) 
     | primEq _ _ = I.VBool false
 
   fun primLess (I.VInt a) (I.VInt b) = I.VBool (a<b)
