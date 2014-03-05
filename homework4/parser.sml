@@ -554,8 +554,84 @@ structure Parser =  struct
                 of NONE => NONE
                  | SOME ts => SOME (es, ts))))
 
+  (*Question 2d*)
+  and parse_aterm_MATCH ts =
+    (case expect_MATCH ts
+      of NONE => NONE
+       | SOME ts =>
+         (case parse_expr ts
+            of NONE => NONE
 
+            (*e1 = nil*)
+             | SOME (I.EVal(I.VList[]), ts) => 
+               (case expect_WITH ts
+                of NONE => NONE
+                 | SOME ts =>
+                   (case expect_LBRACKET ts
+                      of NONE => NONE
+                       | SOME ts =>
+                         (case expect_RBRACKET ts
+                            of NONE => NONE
+                             | SOME ts =>
+                               (case expect_RARROW ts
+                                  of NONE => NONE
+                                   | SOME ts =>
+                                     (case parse_expr ts
+                                      of NONE => NONE
+                                       | SOME (e_hold, ts) => SOME (e_hold,ts))))))
 
+             | SOME (e1,ts) =>
+               (case expect_WITH ts
+                of NONE => NONE
+                 | SOME ts =>
+                   (case expect_LBRACKET ts
+                      of NONE => NONE
+                       | SOME ts =>
+                         (case expect_RBRACKET ts
+                            of NONE => NONE
+                             | SOME ts =>
+                               (case expect_RARROW ts
+                                  of NONE => NONE
+                                   | SOME ts =>
+                                     (case parse_expr ts
+                                      of NONE => NONE
+                                       | SOME (e2, ts) =>
+                                         (case expect_BAR ts
+                                            of NONE => NONE
+                                             | SOME ts =>
+                                               (case expect_SYM ts
+                                                  of NONE => NONE
+                                                   | SOME ts =>
+                                                     (case expect_DCOLON ts
+                                                        of NONE => NONE
+                                                         | SOME ts =>
+                                                           (case expect_SYM ts
+                                                              of NONE => NONE
+                                                               | SOME ts =>
+                                                                 (case expect_RARROW ts
+                                                                    of NONE => NONE
+                                                                     | SOME ts =>
+                                                                       (case parse_expr ts
+                                                                          of NONE => NONE
+                                                                           | SOME (e3, ts) =>
+
+                                                                           let
+                                                                             val s1 = (call1 "head" e1, ts)
+                                                                           in
+                                                                            let
+                                                                              val s2 = (call1 "tail" e1, ts)
+                                                                            in
+                                                                              e3
+                                                                            end
+                                                                           end
+
+                                                                           )))))))))))))
+(*
+                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)
+                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
+                                          | paramFun _ = e1
+                                        in
+                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)*)
 
   fun parse ts = 
       (case parse_expr ts
