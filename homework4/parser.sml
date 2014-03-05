@@ -312,6 +312,7 @@ structure Parser =  struct
 
 
 
+
   fun parse_expr ts = 
       (case parse_eterm ts
 	of NONE => NONE
@@ -380,6 +381,18 @@ structure Parser =  struct
               | SOME (ats,ts) => SOME (convert (at::ats),ts)))
   end
    
+  (*Question 2c*)
+  and parse_expr_list ts = 
+    (case parse_expr ts
+      of NONE => NONE
+       | SOME (e,ts) => 
+         (case expect_COMMA ts
+            of NONE => NONE
+             | SOME ts =>
+               (case parse_expr_list ts
+                 of NONE => NONE
+                  | SOME (es, ts) => SOME (call2 "cons" e es, ts))))
+
 
   and parse_aterm ts = 
       choose [parse_aterm_INT,
@@ -390,7 +403,8 @@ structure Parser =  struct
               parse_aterm_PARENS,
 	      parse_aterm_IF,
 	      parse_aterm_LET,
-	      parse_aterm_LET_FUN
+	      parse_aterm_LET_FUN,
+        parse_aterm_EXPR_LIST
 	     ] ts
 
   and parse_aterm_INT ts = 
@@ -524,6 +538,20 @@ structure Parser =  struct
             | SOME (ats,ts) => SOME (at::ats,ts)))
 
   and parse_aterm_list_EMPTY ts = SOME ([], ts)
+
+  (* Question 2c*)
+  and parse_aterm_EXPR_LIST ts =
+    (case expect_LBRACKET ts
+      of NONE => NONE
+       | SOME ts =>
+         (case parse_expr_list ts
+           of NONE => NONE
+            | SOME (es, ts) =>
+              (case expect_RBRACKET ts
+                of NONE => NONE
+                 | SOME ts => SOME (I.VList(es), ts))))
+
+
 
 
   fun parse ts = 
