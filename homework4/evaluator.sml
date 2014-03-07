@@ -22,6 +22,13 @@ structure Evaluator = struct
   fun primCons a (I.VList xs) = I.VList (a::xs)
     | primCons a _ = evalError "primCons"
 
+  fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
+     | primIntHelp _ _ _= evalError "primIntHelp"
+
+  fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
+     | primInterval _ _ = evalError "primInterval"
+
+
   fun primHd (I.VList []) = evalError "empty at PrimHd"
     | primHd (I.VList (x::xs)) = x
     | primHd _ = evalError "primHd"
@@ -120,6 +127,12 @@ fun primTl (I.VList []) = I.VList []
 						 I.EIdent "a",
 						 I.EIdent "b")),
 			   [])),
+        ("interval", I.VClosure ("a", 
+                           I.EFun ("b", 
+                                   I.EPrimCall2 (primInterval,
+                                                 I.EIdent "a",
+                                                 I.EIdent "b")),
+                           [])),
        ("hd", I.VClosure ("a", 
                                 I.EPrimCall1 (primHd,
                                         I.EIdent "a"),
