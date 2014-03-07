@@ -23,12 +23,16 @@ structure Evaluator = struct
     | primCons a _ = evalError "primCons"
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
-     | primIntHelp _ _ _= evalError "primIntHelp"
+    | primIntHelp _ _ _= evalError "primIntHelp"
 
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
-     | primInterval _ _ = evalError "primInterval"
+    | primInterval _ _ = evalError "primInterval"
 
+  fun primMap (I.EFun f)(I.VList []) = (I.VList [])
+    | primMap (I.EFun (ident,expr))(I.VList (x::xs)) = (primCons (I.ELet(ident, (I.EVal x), expr)) (primMap (I.EFun (ident,expr)) (I.VList xs)))
+    | primMap _ _ = evalError "primMap"
 
+    (* hello *)
   fun primHd (I.VList []) = evalError "empty at PrimHd"
     | primHd (I.VList (x::xs)) = x
     | primHd _ = evalError "primHd"
