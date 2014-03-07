@@ -562,41 +562,6 @@ structure Parser =  struct
        | SOME ts =>
          (case parse_expr ts
             of NONE => NONE
-            (*e1 = nil*)
-             | SOME (I.EIdent "nil", ts) => 
-               (case expect_WITH ts
-                of NONE => NONE
-                 | SOME ts =>
-                   (case expect_LBRACKET ts
-                      of NONE => NONE
-                       | SOME ts =>
-                         (case expect_RBRACKET ts
-                            of NONE => NONE
-                             | SOME ts =>
-                               (case expect_RARROW ts
-                                  of NONE => NONE
-                                   | SOME ts =>
-                                     (case parse_expr ts
-                                      of NONE => NONE
-                                       | SOME (e_hold, ts) => 
-                                       (case expect_BAR ts 
-                                        of NONE => NONE
-                                        | SOME ts =>
-                                        (case expect_SYM ts
-                                          of NONE => NONE 
-                                          | SOME (s,ts) =>
-                                          (case expect_DCOLON ts 
-                                            of NONE => NONE 
-                                            | SOME ts =>
-                                            (case expect_SYM ts
-                                              of NONE => NONE 
-                                              | SOME (ss, ts) =>
-                                              (case expect_RARROW ts
-                                                of NONE => NONE
-                                                | SOME ts =>
-                                                (case parse_expr ts
-                                                  of NONE => NONE 
-                                                  | SOME (expr, ts) => SOME (e_hold, ts))))))))))))
              | SOME (e1,ts) =>
                (case expect_WITH ts
                 of NONE => NONE
@@ -636,12 +601,12 @@ structure Parser =  struct
                                                                              val s1 =  (call1 "hd" e1)
                                                                              val s2 =  (call1 "tl" e1)
                                                                             in
-                                                                              SOME (I.ELet( sym2, s2 , I.ELet(sym1, s1, e3)), ts)
+                                                                              SOME (I.EIf ( (call2 "equal" e1 (I.EVal (I.VList []))) , e2 , I.ELet( sym1, s1 , I.ELet(sym2, s2, e3))), ts)
                                                                             end
 
                                                                            )))))))))))))
 (*
-                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)
+                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)I.EIdent "nil"
                                           | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
                                           | paramFun _ = e1
                                         in
