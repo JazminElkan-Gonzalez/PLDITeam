@@ -404,6 +404,7 @@ structure Parser =  struct
 	      parse_aterm_IF,
 	      parse_aterm_LET,
 	      parse_aterm_LET_FUN,
+        parse_aterm_INTERVAL,
         parse_aterm_MATCH,
         parse_aterm_EXPR_LIST
 	     ] ts
@@ -554,6 +555,23 @@ structure Parser =  struct
               (case expect_RBRACKET ts
                 of NONE => NONE
                  | SOME ts => SOME (es, ts))))
+    (*Question 2f*)
+  and parse_aterm_INTERVAL ts =
+    (case expect_LBRACKET ts
+      of NONE => NONE
+       | SOME ts =>
+         (case parse_expr ts
+            of NONE => NONE
+             | SOME (e1, ts) =>
+               (case expect_DDOTS ts
+                 of NONE => NONE
+                  | SOME ts =>
+                    (case parse_expr ts
+                      of NONE => NONE
+                      | SOME (e2, ts) => 
+                        (case expect_RBRACKET ts
+                          of NONE => NONE
+                           | SOME ts => SOME (call2 "interval" e1 e2, ts))))))
 
   (*Question 2d*)
   and parse_aterm_MATCH ts =
