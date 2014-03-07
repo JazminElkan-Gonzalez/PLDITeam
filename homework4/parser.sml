@@ -561,7 +561,6 @@ structure Parser =  struct
        | SOME ts =>
          (case parse_expr ts
             of NONE => NONE
-
             (*e1 = nil*)
              | SOME (I.EVal(I.VList[]), ts) => 
                (case expect_WITH ts
@@ -578,8 +577,25 @@ structure Parser =  struct
                                    | SOME ts =>
                                      (case parse_expr ts
                                       of NONE => NONE
-                                       | SOME (e_hold, ts) => SOME (e_hold,ts))))))
-
+                                       | SOME (e_hold, ts) => 
+                                       (case expect_BAR ts 
+                                        of NONE => NONE
+                                        | SOME ts =>
+                                        (case expect_SYM ts
+                                          of NONE => NONE 
+                                          | SOME (s,ts) =>
+                                          (case expect_DCOLON ts 
+                                            of NONE => NONE 
+                                            | SOME ts =>
+                                            (case expect_SYM ts
+                                              of NONE => NONE 
+                                              | SOME (ss, ts) =>
+                                              (case expect_RARROW ts
+                                                of NONE => NONE
+                                                | SOME ts =>
+                                                (case parse_expr ts
+                                                  of NONE => NONE 
+                                                  | SOME (expr, ts) => SOME (e_hold, ts))))))))))))
              | SOME (e1,ts) =>
                (case expect_WITH ts
                 of NONE => NONE
@@ -601,13 +617,13 @@ structure Parser =  struct
                                              | SOME ts =>
                                                (case expect_SYM ts
                                                   of NONE => NONE
-                                                   | SOME ts =>
+                                                   | SOME (sym1,ts) =>
                                                      (case expect_DCOLON ts
                                                         of NONE => NONE
                                                          | SOME ts =>
                                                            (case expect_SYM ts
                                                               of NONE => NONE
-                                                               | SOME ts =>
+                                                               | SOME (sym2,ts) =>
                                                                  (case expect_RARROW ts
                                                                     of NONE => NONE
                                                                      | SOME ts =>
@@ -616,14 +632,11 @@ structure Parser =  struct
                                                                            | SOME (e3, ts) =>
 
                                                                            let
-                                                                             val s1 = (call1 "head" e1, ts)
-                                                                           in
-                                                                            let
-                                                                              val s2 = (call1 "tail" e1, ts)
+                                                                             val s1 =  (call1 "head" e1)
+                                                                             val s2 =  (call1 "tail" e1)
                                                                             in
-                                                                              e3
+                                                                              SOME (I.ELet( sym2, s2 , I.ELet(sym1, s1, e3)), ts)
                                                                             end
-                                                                           end
 
                                                                            )))))))))))))
 (*
