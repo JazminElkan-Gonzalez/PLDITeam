@@ -28,12 +28,7 @@ structure Evaluator = struct
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
     | primInterval _ _ = evalError "primInterval"
 
-  fun primMap (I.EFun f)(I.VList []) = (I.VList [])
-    | primMap (I.EFun (ident,expr))(I.VList (x::xs)) = (primCons (I.ELet(ident, (I.EVal x), expr)) (primMap (I.EFun (ident,expr)) (I.VList xs)))
-    | primMap _ _ = evalError "primMap"
-
-    (* hello *)
-  fun primHd (I.VList []) = evalError "empty at PrimHd"
+ fun primHd (I.VList []) = evalError "empty at PrimHd"
     | primHd (I.VList (x::xs)) = x
     | primHd _ = evalError "primHd"
 
@@ -118,6 +113,16 @@ fun primTl (I.VList []) = I.VList []
    *   Initial environment (already in a form suitable for the environment)
    *)
 
+  fun initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
+    | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
+                                                           val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
+                                                           fun mapL (I.VList xs) = xs
+                                                             | mapL _ = evalError "initMap"
+                                                         in
+                                                            I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
+                                                         end
+    | initMap _ _ = evalError "initMap"
+  
   val initialEnv = 
       [("add", I.VClosure ("a", 
 			   I.EFun ("b", 
@@ -151,7 +156,12 @@ fun primTl (I.VList []) = I.VList []
                                                  I.EIdent "a",
                                                  I.EIdent "b")),
                            [])),
-        ("nil", I.VList []),
+       ("nil", I.VList []),
+       ("map", I.VClosure ("f", I.EFun("xs",
+                                  I.EPrimCall2 (initMap,
+                                                I.EIdent "f",
+                                                I.EIdent "xs")),
+                          [])),
        ("equal", I.VClosure ("a",
 			  I.EFun ("b",
 				  I.EPrimCall2 (primEq,
