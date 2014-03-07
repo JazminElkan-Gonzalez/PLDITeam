@@ -404,6 +404,7 @@ structure Parser =  struct
 	      parse_aterm_IF,
 	      parse_aterm_LET,
 	      parse_aterm_LET_FUN,
+        parse_aterm_MATCH,
         parse_aterm_EXPR_LIST
 	     ] ts
 
@@ -562,7 +563,7 @@ structure Parser =  struct
          (case parse_expr ts
             of NONE => NONE
             (*e1 = nil*)
-             | SOME (I.EVal(I.VList[]), ts) => 
+             | SOME (I.EIdent "nil", ts) => 
                (case expect_WITH ts
                 of NONE => NONE
                  | SOME ts =>
@@ -632,8 +633,8 @@ structure Parser =  struct
                                                                            | SOME (e3, ts) =>
 
                                                                            let
-                                                                             val s1 =  (call1 "head" e1)
-                                                                             val s2 =  (call1 "tail" e1)
+                                                                             val s1 =  (call1 "hd" e1)
+                                                                             val s2 =  (call1 "tl" e1)
                                                                             in
                                                                               SOME (I.ELet( sym2, s2 , I.ELet(sym1, s1, e3)), ts)
                                                                             end
