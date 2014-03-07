@@ -242,6 +242,7 @@ structure Parser =  struct
    *             T_IF expr T_THEN expr T_ELSE expr          [aterm_IF]
    *             T_LET T_SYM T_EQUAL expr T_IN expr         [aterm_LET]
    *             T_LET T_SYM T_SYM T_EQUAL expr T_IN expr   [aterm_LET_FUN]
+   *             T_LBRACKET expr T_BAR T_SYM T_LARROW expr T_RBRACKET
    *)
 
 
@@ -406,7 +407,8 @@ structure Parser =  struct
 	      parse_aterm_LET_FUN,
         parse_aterm_INTERVAL,
         parse_aterm_MATCH,
-        parse_aterm_EXPR_LIST
+        parse_aterm_EXPR_LIST,
+        parse_aterm_MAP
 	     ] ts
 
   and parse_aterm_INT ts = 
@@ -524,7 +526,28 @@ structure Parser =  struct
                                          SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
                                         end)))))))
 
-
+  and parse_aterm_MAP ts = 
+    (case expect_LBRACKET ts
+        of NONE => NONE
+        | SOME ts => 
+          (case parse_expr ts
+             of NONE => NONE
+             | SOME (e1,ts) =>
+                (case expect_BAR ts
+                   of NONE => NONE
+                   | SOME ts =>
+                      (case expect_SYM ts
+                        of NONE => NONE
+                        | SOME (s,ts) =>
+                          (case expect_LARROW ts
+                            of NONE => NONE
+                            | SOME ts =>
+                               (case parse_expr ts 
+                                  of NONE => NONE
+                                  | SOME (e2,ts) =>
+                                    (case expect_RBRACKET ts
+                                       of NONE => NONE
+                                       | SOME ts => SOME ((call2 "map" (I.EFun(s,e1)) e2),ts))))))))
 
   and parse_aterm_list ts = 
       choose [parse_aterm_list_ATERM_LIST,
