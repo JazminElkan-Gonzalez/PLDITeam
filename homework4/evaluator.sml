@@ -113,7 +113,8 @@ fun primTl (I.VList []) = I.VList []
    *   Initial environment (already in a form suitable for the environment)
    *)
 
-  fun initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
+  fun initMap (I.VClosure (n,e,env)) (I.VList []) = I.VList []
+    | initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
     | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                            val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
                                                            fun mapL (I.VList xs) = xs
@@ -122,6 +123,21 @@ fun primTl (I.VList []) = I.VList []
                                                             I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
                                                          end
     | initMap _ _ = evalError "initMap"
+
+  fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
+    | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
+                                                              val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
+                                                              fun filterL (I.VList xs) = xs
+                                                                | filterL _ = evalError "initFilter"
+                                                              val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
+                                                              fun checkEq (I.VBool x) = x
+                                                                | checkEq _ = evalError "initFilter"
+                                                            in
+                                                              if (checkEq xApp)
+                                                                then I.VList (x::(filterL vFilter))
+                                                              else I.VList (filterL vFilter)
+                                                            end
+    | initFilter _ _ = evalError "initFilter"
   
   val initialEnv = 
       [("add", I.VClosure ("a", 
@@ -160,6 +176,11 @@ fun primTl (I.VList []) = I.VList []
        ("map", I.VClosure ("f", I.EFun("xs",
                                   I.EPrimCall2 (initMap,
                                                 I.EIdent "f",
+                                                I.EIdent "xs")),
+                          [])),
+       ("filter", I.VClosure ("p", I.EFun("xs",
+                                  I.EPrimCall2 (initFilter,
+                                                I.EIdent "p",
                                                 I.EIdent "xs")),
                           [])),
        ("equal", I.VClosure ("a",
