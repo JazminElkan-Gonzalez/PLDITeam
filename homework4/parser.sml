@@ -331,6 +331,23 @@ structure Parser =  struct
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "equal" e1 e2, ts))))
 
+  and parse_fields ts =
+    (case expect_SYM ts
+      of NONE => SOME ([],ts)
+      | SOME (s1,ts) =>
+      (case expect_EQUAL ts
+        of NONE => NONE
+        | SOME ts =>
+        (case parse_expr ts
+          of NONE => NONE
+          | SOME (e1,ts) =>
+          (case expect_COMMA ts
+            of NONE => SOME ([(s1,e1)],ts)
+            | SOME ts =>
+            (case parse_fields ts
+              of NONE => NONE 
+              | SOME (e2,ts) => SOME ((s1,e1)::e2,ts) )))))
+
   and parse_symList ts = 
         (case expect_SYM ts 
           of NONE => NONE
@@ -410,6 +427,8 @@ structure Parser =  struct
         parse_aterm_MATCH,
         parse_aterm_EXPR_LIST,
         parse_aterm_MAP,
+        parse_aterm_RECORD,
+        parse_aterm_FIELD,
         parse_aterm_FILTER
 	     ] ts
 
@@ -417,6 +436,29 @@ structure Parser =  struct
     (case expect_INT ts 
       of NONE => NONE
        | SOME (i,ts) => SOME (I.EVal (I.VInt i),ts))
+
+  (* question 3b *)
+  and parse_aterm_RECORD ts =
+    (case expect_LBRACE ts
+      of NONE => NONE
+      | SOME ts => 
+      (case parse_fields ts
+        of NONE => NONE 
+        | SOME (recordList, ts) =>
+        (case expect_RBRACE ts
+          of NONE => NONE
+          | SOME ts => SOME (I.ERecord recordList, ts))))
+
+  and parse_aterm_FIELD ts =
+    (case expect_HASH ts
+      of NONE => NONE
+      | SOME ts =>
+      (case expect_SYM ts
+        of NONE => NONE
+        | SOME (s,ts) =>
+        (case parse_expr ts
+          of NONE => NONE
+          | SOME (e,ts) => SOME (I.EField (e,s) , ts))))
 
   and parse_aterm_TRUE ts = 
     (case expect_TRUE ts
