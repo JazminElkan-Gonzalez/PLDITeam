@@ -18,23 +18,25 @@ structure Evaluator = struct
    *   Primitive operations
    *)
 
-
+ (* Question 2a *)
   fun primCons a (I.VList xs) = I.VList (a::xs)
     | primCons a _ = evalError "primCons"
+    
+  fun primHd (I.VList []) = evalError "empty at PrimHd"
+    | primHd (I.VList (x::xs)) = x
+    | primHd _ = evalError "primHd"
+
+  fun primTl (I.VList []) = I.VList []
+    | primTl (I.VList (x::xs)) = I.VList xs
+    | primTl _ = evalError "primTl"
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
     | primIntHelp _ _ _= evalError "primIntHelp"
 
+(* Question 2e *)
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
     | primInterval _ _ = evalError "primInterval"
-
- fun primHd (I.VList []) = evalError "empty at PrimHd"
-    | primHd (I.VList (x::xs)) = x
-    | primHd _ = evalError "primHd"
-
-fun primTl (I.VList []) = I.VList []
-    | primTl (I.VList (x::xs)) = I.VList xs
-    | primTl _ = evalError "primTl"
+    
 
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
     | primPlus _ _ = evalError "primPlus"
@@ -43,7 +45,7 @@ fun primTl (I.VList []) = I.VList []
     | primMinus _ _ = evalError "primMinus"
 
 
-
+(* Question 2b *)
   fun primEqHelper (I.VList []) (I.VList []) = true
      | primEqHelper (I.VList (x::xs)) (I.VList []) = false
      | primEqHelper (I.VList []) (I.VList (x::xs)) = false
@@ -85,6 +87,7 @@ fun primTl (I.VList []) = I.VList []
     | eval env (I.EApp (e1,e2)) = evalApp env (eval env e1) (eval env e2)
     | eval env (I.EPrimCall1 (f,e1)) = f (eval env e1)
     | eval env (I.EPrimCall2 (f,e1,e2)) = f (eval env e1) (eval env e2)
+ (* Question 3a *)
     | eval env (I.ERecord fs) = I.VRecord (map (fn (s, e) => (s, eval env e)) fs)
     | eval env (I.EField (e,s)) = (lookup s (case (eval env e) of (I.VRecord e) => e
                                               | _ => evalError "Not a record"))
@@ -114,6 +117,7 @@ fun primTl (I.VList []) = I.VList []
    *   Initial environment (already in a form suitable for the environment)
    *)
 
+(* Question 2g *)
   fun initMap (I.VClosure (n,e,env)) (I.VList []) = I.VList []
     | initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
     | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
@@ -124,7 +128,7 @@ fun primTl (I.VList []) = I.VList []
                                                             I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
                                                          end
     | initMap _ _ = evalError "initMap"
-
+(* Question 2i *)
   fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
     | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                               val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
@@ -153,12 +157,14 @@ fun primTl (I.VList []) = I.VList []
 						 I.EIdent "a",
 						 I.EIdent "b")),
 			   [])),
+(* Question 2e *)
         ("interval", I.VClosure ("a", 
                            I.EFun ("b", 
                                    I.EPrimCall2 (primInterval,
                                                  I.EIdent "a",
                                                  I.EIdent "b")),
                            [])),
+ (* Question 2a *)
        ("hd", I.VClosure ("a", 
                                 I.EPrimCall1 (primHd,
                                         I.EIdent "a"),
