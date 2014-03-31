@@ -330,7 +330,7 @@ structure Parser =  struct
 		(case parse_eterm ts
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "equal" e1 e2, ts))))
-
+(* Question 3b *)
   and parse_fields ts =
     (case expect_SYM ts
       of NONE => SOME ([],ts)
@@ -348,6 +348,7 @@ structure Parser =  struct
               of NONE => NONE 
               | SOME (e2,ts) => SOME ((s1,e1)::e2,ts) )))))
 
+(* Question 1a *)
   and parse_symList ts = 
         (case expect_SYM ts 
           of NONE => NONE
@@ -449,6 +450,7 @@ structure Parser =  struct
           of NONE => NONE
           | SOME ts => SOME (I.ERecord recordList, ts))))
 
+(* Question 3c *)
   and parse_aterm_FIELD ts =
     (case expect_HASH ts
       of NONE => NONE
@@ -540,6 +542,8 @@ structure Parser =  struct
                                of NONE => NONE
                                 | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
 
+
+(* Question 1a *)
   and parse_aterm_LET_FUN ts = 
     (case expect_LET ts 
       of NONE => NONE
@@ -569,7 +573,7 @@ structure Parser =  struct
                                         in
                                          SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
                                         end)))))))
-
+(* Question 2h *) 
   and parse_aterm_MAP ts = 
     (case expect_LBRACKET ts
         of NONE => NONE
@@ -592,7 +596,7 @@ structure Parser =  struct
                                     (case expect_RBRACKET ts
                                        of NONE => NONE
                                        | SOME ts => SOME ((call2 "map" (I.EFun(s,e1)) e2),ts))))))))
-
+(* Question 2j *) 
   and parse_aterm_FILTER ts =
     (case expect_LBRACKET ts
         of NONE => NONE
