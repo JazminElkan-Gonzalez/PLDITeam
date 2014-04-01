@@ -147,6 +147,12 @@ structure Evaluator = struct
     | primCons [a, _] = evalError ["primCons"]
     | primCons _ = evalError ["primCons"]
 
+  fun primHead [I.VList (ref(b)::bs)] = b
+    | primHead _ = evalError ["primHead"]
+
+  fun primTail [I.VList (ref(b)::bs)] = I.VList (bs)
+    | primTail _ = evalError ["primButt"]
+
 
   val initialEnv = 
       [("+", Func (["a","b"], I.EPrimCall (primPlus,
@@ -161,6 +167,12 @@ structure Evaluator = struct
        ("cons", Func (["a", "b"], I.EPrimCall (primCons,
              [I.EIdent "a",
               I.EIdent "b"]),
+        [])),
+       ("hd", Func (["a"], I.EPrimCall (primHead,
+             [I.EIdent "a"]),
+        [])),
+       ("tl", Func (["b"], I.EPrimCall (primTail,
+             [I.EIdent "b"]),
         []))
       ]
 
