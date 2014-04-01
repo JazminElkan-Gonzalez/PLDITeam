@@ -73,6 +73,7 @@ structure Parser =  struct
 		 | T_LEFTARROW
 		 | T_FOR
 		 | T_LETVAR
+                 | T_HEAD
 
 
   fun stringOfToken T_LET = "T_LET"
@@ -102,6 +103,8 @@ structure Parser =  struct
     | stringOfToken T_LEFTARROW = "T_LEFTARROW"
     | stringOfToken T_FOR = "T_FOR"
     | stringOfToken T_LETVAR = "T_LETVAR"
+    | stringOfToken T_HEAD = "T_HEAD"
+
 
                    
   fun whitespace _ = NONE
@@ -121,6 +124,7 @@ structure Parser =  struct
     | produceSymbol "const" = SOME (T_CONST)
     | produceSymbol "for" = SOME (T_FOR)
     | produceSymbol "letvar" = SOME (T_LETVAR)
+    | produceSymbol "hd" = SOME (T_HEAD)
     | produceSymbol text = SOME (T_SYM text)
                            
   fun produceInt text = (case Int.fromString text
@@ -540,6 +544,27 @@ structure Parser =  struct
 				 (case parse_expr ts
 				   of NONE => NONE
                                     | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
+
+   fun term_HD ts =
+        (case expect T_HEAD ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LPAREN ts 
+                of NONE => NONE 
+                | SOME ts =>
+                ( case parse_expr ts
+                of NONE => NONE 
+                | SOME (e,ts) =>
+                (case expect T_RPAREN ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LEFTARROW ts
+                of NONE => NONE
+                | SOME ts =>
+                (case parse_expr ts 
+                of NONE => NONE
+                | SOME (e1,ts) => SOME (I.SCall ("updateHd", [e,e1]),ts)))))))
+
     fun term_IF ts = 
 	(case expect T_IF ts
 	  of NONE => NONE
@@ -563,7 +588,7 @@ structure Parser =  struct
 
   in
     choose [term_INT, term_TRUE, term_FALSE,
-	    term_CALL, term_SYM, term_PARENS, term_IF, term_LET] ts
+	    term_CALL, term_SYM, term_PARENS, term_IF, term_LET, term_HD] ts
   end
 
 
@@ -577,19 +602,18 @@ structure Parser =  struct
 		(case parse_expr_list ts
 		  of NONE => NONE
 		   | SOME (es,ts) => SOME (e::es,ts))))
-
-
+  
   fun parseStmt ts = 
       (case parse_stmt ts
         of SOME (s,[]) => s
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
-         | NONE => parseError "cannot parse input")
+         | NONE => parseError "cannot parse input statement")
 
   fun parseDecl ts = 
       (case parse_decl ts
         of SOME (d,[]) => d
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
-         | NONE => parseError "cannot parse input")
+         | NONE => parseError "cannot parse input decl")
       
 
 end

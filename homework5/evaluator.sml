@@ -153,10 +153,7 @@ structure Evaluator = struct
   fun primTail [I.VList (ref(b)::bs)] = I.VList (bs)
     | primTail _ = evalError ["primButt"]
 
-  fun updateHead [a, I.VList (b::bs)] =
-      let b = a
-        in I.VList (b::bs)
-      end
+  fun updateHead [I.VList (b::bs), a] = b := a
     | updateHead _ = evalError ["updateHead"]
 
   val initialEnv = 
