@@ -143,7 +143,7 @@ structure Evaluator = struct
     | primEq [_,_] = I.VBool false
     | primEq _ = evalError ["type error in primEq"]
 
-  fun primCons [(I.EVal a), Con (I.VList b)] = I.VList (a::b)
+  fun primCons [a, I.VList b] = I.VList (ref (a)::b)
     | primCons [a, _] = evalError ["primCons"]
 
 
