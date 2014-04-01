@@ -153,6 +153,11 @@ structure Evaluator = struct
   fun primTail [I.VList (ref(b)::bs)] = I.VList (bs)
     | primTail _ = evalError ["primButt"]
 
+  fun updateHead [a, I.VList (b::bs)] =
+      let b = a
+        in I.VList (b::bs)
+      end
+    | updateHead _ = evalError ["updateHead"]
 
   val initialEnv = 
       [("+", Func (["a","b"], I.EPrimCall (primPlus,
@@ -173,6 +178,10 @@ structure Evaluator = struct
         [])),
        ("tl", Func (["b"], I.EPrimCall (primTail,
              [I.EIdent "b"]),
+        [])),
+       ("updateHd", Proc (["a", "b"], I.SPrimCall (updateHead,
+             [I.EIdent "a",
+              I.EIdent "b"]),
         []))
       ]
 
