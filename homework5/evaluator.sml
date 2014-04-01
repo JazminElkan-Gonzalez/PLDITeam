@@ -143,6 +143,9 @@ structure Evaluator = struct
     | primEq [_,_] = I.VBool false
     | primEq _ = evalError ["type error in primEq"]
 
+  fun primCons [Var a, Con (I.VList b)] = I.VList (a::b)
+    | primCons [a, _] = evalError ["primCons"]
+
 
   val initialEnv = 
       [("+", Func (["a","b"], I.EPrimCall (primPlus,
@@ -152,7 +155,12 @@ structure Evaluator = struct
        ("=", Func (["a","b"], I.EPrimCall (primEq,
 					   [I.EIdent "a",
 					    I.EIdent "b"]),
-		    []))
+		    [])),
+       ("nil", Con (I.VList [])),
+       ("cons", Func (["a", "b"], I.EPrimCall (primCons,
+             [I.EIdent "a",
+              I.EIdent "b"]),
+        []))
       ]
 
 
