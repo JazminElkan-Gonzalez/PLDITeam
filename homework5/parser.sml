@@ -432,10 +432,29 @@ structure Parser =  struct
 		  (case expect T_RBRACE ts
 		    of NONE => NONE
 		     | SOME ts => SOME (I.SBlock ss,ts))))
+    fun stmt_HD ts =
+        (case expect T_HEAD ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LPAREN ts 
+                of NONE => NONE 
+                | SOME ts =>
+                ( case parse_expr ts
+                of NONE => NONE 
+                | SOME (e,ts) =>
+                (case expect T_RPAREN ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LEFTARROW ts
+                of NONE => NONE
+                | SOME ts =>
+                (case parse_expr ts 
+                of NONE => NONE
+                | SOME (e1,ts) => SOME (I.SCall ("updateHd", [e,e1]),ts)))))))
 
   in
     choose [stmt_IF, stmt_WHILE, stmt_UPDATE, stmt_CALL, stmt_PRINT,
-	    stmt_BLOCK_EMPTY, stmt_BLOCK ] ts
+	    stmt_BLOCK_EMPTY, stmt_BLOCK, stmt_HD ] ts
   end
 
 
@@ -462,9 +481,26 @@ structure Parser =  struct
 		  (case parse_eterm ts
                     of NONE => NONE
                      | SOME (e2,ts) => SOME (I.ECall ("=", [e1,e2]),ts))))
+
+        fun expr_HD ts =
+        (case expect T_HEAD ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LPAREN ts 
+                of NONE => NONE 
+                | SOME ts =>
+                ( case parse_expr ts
+                of NONE => NONE 
+                | SOME (e,ts) =>
+                (case expect T_RPAREN ts
+                of NONE => NONE
+                | SOME ts =>
+                (case expect T_LEFTARROW ts
+                of NONE => SOME (I.ECall ("hd", [e]),ts)
+                | SOME ts => NONE)))))
     fun expr_ETERM ts = parse_eterm ts
   in
-    choose [expr_EQUAL, expr_ETERM] ts
+    choose [expr_EQUAL, expr_ETERM, expr_HD] ts
   end
 
 
@@ -545,25 +581,6 @@ structure Parser =  struct
 				   of NONE => NONE
                                     | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
 
-   fun term_HD ts =
-        (case expect T_HEAD ts
-                of NONE => NONE
-                | SOME ts =>
-                (case expect T_LPAREN ts 
-                of NONE => NONE 
-                | SOME ts =>
-                ( case parse_expr ts
-                of NONE => NONE 
-                | SOME (e,ts) =>
-                (case expect T_RPAREN ts
-                of NONE => NONE
-                | SOME ts =>
-                (case expect T_LEFTARROW ts
-                of NONE => NONE
-                | SOME ts =>
-                (case parse_expr ts 
-                of NONE => NONE
-                | SOME (e1,ts) => SOME (I.SCall ("updateHd", [e,e1]),ts)))))))
 
     fun term_IF ts = 
 	(case expect T_IF ts
@@ -588,7 +605,7 @@ structure Parser =  struct
 
   in
     choose [term_INT, term_TRUE, term_FALSE,
-	    term_CALL, term_SYM, term_PARENS, term_IF, term_LET, term_HD] ts
+	    term_CALL, term_SYM, term_PARENS, term_IF, term_LET] ts
   end
 
 
