@@ -145,6 +145,7 @@ structure Evaluator = struct
 
   fun primCons [a, I.VList b] = I.VList (ref (a)::b)
     | primCons [a, _] = evalError ["primCons"]
+    | primCons _ = evalError ["primCons"]
 
 
   val initialEnv = 
