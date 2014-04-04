@@ -53,7 +53,7 @@ structure Evaluator = struct
     (case (primEq x y) 
         of (I.VBool false) => false 
         | (I.VBool true) => (primEqHelper (I.VList xs) (I.VList ys))
-        | _ => evalError "how the fuck did you get here?????? primEqHelper")
+        | _ => evalError "This error should not happen. primEqHelper")
      | primEqHelper _ _ = evalError "primEqHelper"
 
   and primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
