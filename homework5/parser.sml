@@ -451,14 +451,35 @@ structure Parser =  struct
                 (case parse_expr ts 
                 of NONE => NONE
                 | SOME (e1,ts) => SOME (I.SCall ("updateHd", [e,e1]),ts)))))))
+    fun stmt_LETVAR ts = 
+        (case expect T_LETVAR ts 
+                of NONE => NONE
+                | SOME ts =>
+                (case expect_SYM ts 
+                        of NONE => NONE
+                        |SOME (s,ts) =>
+                        (case expect T_EQUAL ts 
+                                of NONE => NONE
+                                |SOME ts =>
+                                (case parse_expr ts 
+                                        of NONE => NONE
+                                        | SOME (e,ts) =>
+                                        (case expect T_IN ts 
+                                                of NONE => NONE
+                                                | SOME ts =>
+                                                (case parse_stmt ts 
+                                                        of NONE => NONE
+                                                        |SOME (stmt,ts) => SOME ((I.SVar (s,e,stmt),ts))))))))
 
   in
     choose [stmt_IF, stmt_WHILE, stmt_UPDATE, stmt_CALL, stmt_PRINT,
-	    stmt_BLOCK_EMPTY, stmt_BLOCK, stmt_HD ] ts
+	    stmt_BLOCK_EMPTY, stmt_BLOCK, stmt_HD, stmt_LETVAR] ts
   end
 
 
   and parse_stmt_list ts = 
+      (case expect T_VAR ts 
+        of NONE =>
       (case parse_stmt ts
 	of NONE => NONE 
 	 | SOME (s,ts) => 
@@ -468,6 +489,19 @@ structure Parser =  struct
 		(case parse_stmt_list ts
 		  of NONE => NONE
 		   | SOME (ss,ts) => SOME (s::ss,ts))))
+      | SOME ts => 
+        (case expect_SYM ts 
+                of NONE => NONE
+                | SOME (sym,ts) =>
+                (case expect T_EQUAL ts 
+                        of NONE => NONE
+                        |SOME ts => 
+                        (case parse_expr ts 
+                                of NONE => NONE
+                                | SOME (e,ts) => 
+                                (case parse_stmt_list ts
+                                        of NONE => NONE
+                                        |SOME (ss,ts) => SOME ([I.SVar (sym,e,I.SBlock(ss))], ts))))))
 
  
   and parse_expr ts = let
