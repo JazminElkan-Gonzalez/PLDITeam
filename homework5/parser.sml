@@ -478,7 +478,7 @@ structure Parser =  struct
 
 
   and parse_stmt_list ts = 
-      (case expect T_VAR ts 
+      (case expect T_VAR ts
         of NONE =>
       (case parse_stmt ts
 	of NONE => NONE 
@@ -492,11 +492,7 @@ structure Parser =  struct
       | SOME ts => 
       (case parse_stmt_VAR ts 
         of NONE => NONE
-        |SOME (s,ts) =>
-        (case parse_stmt_list ts
-          of NONE => NONE
-           | SOME (ss,ts) => SOME (s::ss,ts))))
-        
+        |SOME (s,ts) => SOME ([s],ts)))
 
  
   and parse_stmt_VAR ts = 
@@ -506,11 +502,11 @@ structure Parser =  struct
                 (case expect T_EQUAL ts 
                         of NONE => NONE
                         |SOME ts => 
-                        (case parse_expr ts 
+                        (case parse_expr ts
                                 of NONE => NONE
                                 | SOME (e,ts) => 
                                 (case expect T_SEMICOLON ts
-                                        of NONE => NONE
+                                        of NONE => parseError "Unutilized local variable"
                                         | SOME ts =>
                                         (case parse_stmt_list ts
                                                 of NONE => NONE
