@@ -13,7 +13,7 @@ structure Shell = struct
   (* automatically loads primitives defined in the evaluator *)
 
   fun run env = let
-    fun prompt () = (print "homework4> "; TextIO.inputLine (TextIO.stdIn))
+    fun prompt () = (print "project> "; TextIO.inputLine (TextIO.stdIn))
     fun pr l = print ((String.concatWith " " l)^"\n")
     fun read fenv = 
 	(case prompt () 
