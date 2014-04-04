@@ -493,12 +493,9 @@ structure Parser =  struct
       (case parse_stmt_VAR ts 
         of NONE => NONE
         |SOME (s,ts) =>
-        (case expect T_SEMICOLON ts
-             of NONE => SOME ([s],ts)
-              | SOME ts => 
-                (case parse_stmt_list ts
-                  of NONE => NONE
-                   | SOME (ss,ts) => SOME (s::ss,ts)))))
+        (case parse_stmt_list ts
+          of NONE => NONE
+           | SOME (ss,ts) => SOME (s::ss,ts))))
         
 
  
@@ -512,9 +509,12 @@ structure Parser =  struct
                         (case parse_expr ts 
                                 of NONE => NONE
                                 | SOME (e,ts) => 
-                                (case parse_stmt_list ts
+                                (case expect T_SEMICOLON ts
                                         of NONE => NONE
-                                        |SOME (ss,ts) => SOME (I.SVar (sym,e,I.SBlock(ss)), ts)))))
+                                        | SOME ts =>
+                                        (case parse_stmt_list ts
+                                                of NONE => NONE
+                                                |SOME (ss,ts) => SOME (I.SVar (sym, e, I.SBlock(ss)), ts))))))
 
   and parse_expr ts = let
     fun expr_EQUAL ts = 
