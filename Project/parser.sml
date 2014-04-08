@@ -1,5 +1,5 @@
 (* 
- *   PROJECT
+ *   CODE FOR HOMEWORK 4
  *)
 
 
@@ -8,7 +8,6 @@ structure Parser =  struct
   (*
    *  Wrapper around the regexp library
    *)      
-
 
   structure R = RegExpFn (structure P = AwkSyntax structure E = DfaEngine)
 
@@ -209,14 +208,9 @@ structure Parser =  struct
                
   fun lexString str = lex (explode str)
                       
-  (*
-   * Reference value
-   *)               
-
-  val checkpoint = (ref) "a"       
+                      
                            
-  fun checkNone [] = (parseError "not finished")
-    | checkNone ts = (parseError (stringOfToken (hd ts)))
+
 
 
   (* 
@@ -230,11 +224,11 @@ structure Parser =  struct
    *   eterm ::= cterm T_DCOLON cterm      
    *             cterm                     
    *
-   *   cterm ::= term T_PLUS term
-   *             term T_MINUS term
-   *             term
+   *   cterm ::= term T_PLUS term         
+   *             term T_MINUS term        
+   *             term                     
    *
-   *   term :: = aterm aterm_list
+   *   term :: = aterm aterm_list        
    *            
    *   aterm_list ::= aterm aterm_list                [aterm_list_ATERM_LIST]
    *                  <empty>                         [aterm_list_EMPTY]
@@ -252,6 +246,7 @@ structure Parser =  struct
    *             T_LBRACKET expr T_BAR T_SYM T_LARROW expr T_COMMA expr T_RBRACKET
    *)
 
+  val test = ref "test"
 
   fun expect_INT ((T_INT i)::ts) = SOME (i,ts)
     | expect_INT _ = NONE
@@ -309,6 +304,7 @@ structure Parser =  struct
 	of NONE => choose parsers ts
 	 | s => s)
 
+
   (*
    *  some helper functions to construct function calls in the internal representation
    *)
@@ -335,7 +331,7 @@ structure Parser =  struct
 		(case parse_eterm ts
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "equal" e1 e2, ts))))
-
+(* Question 3b *)
   and parse_fields ts =
     (case expect_SYM ts
       of NONE => SOME ([],ts)
@@ -353,13 +349,15 @@ structure Parser =  struct
               of NONE => NONE 
               | SOME (e2,ts) => SOME ((s1,e1)::e2,ts) )))))
 
+(* Question 1a *)
   and parse_symList ts = 
         (case expect_SYM ts 
           of NONE => NONE
           | SOME (s1,ts) => 
           (case parse_symList ts 
            of NONE => SOME ([s1],ts)
-           | SOME (ss,ts) => SOME (s1::ss,ts)))           
+           | SOME (ss,ts) => SOME (s1::ss,ts)))
+           
            
   and parse_eterm ts = 
       (case parse_cterm ts
@@ -371,6 +369,7 @@ structure Parser =  struct
 		(case parse_cterm ts
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "cons" e1 e2, ts))))
+
 
   and parse_cterm ts = 
       (case parse_term ts
@@ -389,6 +388,7 @@ structure Parser =  struct
 		  of NONE => NONE
 		   | SOME (e2,ts) => SOME (call2 "add" e1 e2, ts))))
 
+
   and parse_term ts = let
     fun convert [] = parseError "empty list of aterms"
       | convert [at] = at
@@ -401,7 +401,8 @@ structure Parser =  struct
              of NONE => NONE
               | SOME (ats,ts) => SOME (convert (at::ats),ts)))
   end
-
+   
+  (*Question 2c*)
   and parse_expr_list ts = 
     (case parse_expr ts
       of NONE => NONE
@@ -424,13 +425,13 @@ structure Parser =  struct
 	      parse_aterm_IF,
 	      parse_aterm_LET,
 	      parse_aterm_LET_FUN,
-              parse_aterm_INTERVAL,
-              parse_aterm_MATCH,
-              parse_aterm_EXPR_LIST,
-              parse_aterm_MAP,
-              parse_aterm_RECORD,
-              parse_aterm_FIELD,
-              parse_aterm_FILTER
+        parse_aterm_INTERVAL,
+        parse_aterm_MATCH,
+        parse_aterm_EXPR_LIST,
+        parse_aterm_MAP,
+        parse_aterm_RECORD,
+        parse_aterm_FIELD,
+        parse_aterm_FILTER
 	     ] ts
 
   and parse_aterm_INT ts = 
@@ -438,26 +439,28 @@ structure Parser =  struct
       of NONE => NONE
        | SOME (i,ts) => SOME (I.EVal (I.VInt i),ts))
 
+  (* question 3b *)
   and parse_aterm_RECORD ts =
     (case expect_LBRACE ts
       of NONE => NONE
       | SOME ts => 
       (case parse_fields ts
-        of NONE => NONE 
+        of NONE => (test := "error in record - expected field "; NONE)
         | SOME (recordList, ts) =>
         (case expect_RBRACE ts
-          of NONE => NONE
+          of NONE => (test := "error in record - expected rbrace "; NONE)
           | SOME ts => SOME (I.ERecord recordList, ts))))
 
+(* Question 3c *)
   and parse_aterm_FIELD ts =
     (case expect_HASH ts
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => NONE
+        of NONE => (test := "error in field - expected symbol "; NONE)
         | SOME (s,ts) =>
         (case parse_expr ts
-          of NONE => NONE
+          of NONE => (test := "error in field - expected expr "; NONE)
           | SOME (e,ts) => SOME (I.EField (e,s) , ts))))
 
   and parse_aterm_TRUE ts = 
@@ -480,13 +483,13 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
 	 (case expect_SYM ts
-	   of NONE => NONE
+	   of NONE => (test := "error in function - expected symbol "; NONE)
 	    | SOME (s,ts) => 
 	      (case expect_RARROW ts
-		of NONE => NONE
+		of NONE => (test := "error in function - expected rarrow "; NONE)
 		 | SOME ts => 
 		   (case parse_expr ts
-		     of NONE => NONE
+		     of NONE => (test := "error in function - expected expr "; NONE)
 		      | SOME (e,ts) => SOME (I.EFun (s,e), ts)))))
 
   and parse_aterm_PARENS ts = 
@@ -494,10 +497,10 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          (case parse_expr ts
-           of NONE => NONE
+           of NONE => (test := "expected expr "; NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
-                of NONE => NONE
+                of NONE => (test := "expected rparen "; NONE)
                 | SOME ts => SOME (e,ts))))
 
   and parse_aterm_IF ts = 
@@ -505,19 +508,19 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case parse_expr ts
-           of NONE => NONE
+           of NONE => (test := "error in if - expected expr "; NONE)
             | SOME (e1,ts) => 
               (case expect_THEN ts
-                of NONE => NONE
+                of NONE => (test := "error in if - expected then "; NONE)
                  | SOME ts => 
                    (case parse_expr ts
-                     of NONE => NONE
+                     of NONE => (test := "error in if - expected expr "; NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
-                          of NONE => NONE
+                          of NONE => (test := "error in if - expected else "; NONE)
                            | SOME ts => 
                              (case parse_expr ts
-                               of NONE => NONE
+                               of NONE => (test := "error in if - expected expr "; NONE)
                                 | SOME (e3,ts) => SOME (I.EIf (e1,e2,e3),ts)))))))
 
   and parse_aterm_LET ts = 
@@ -525,43 +528,45 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts 
-           of NONE => NONE
+           of NONE => (test := "error in let - expected symbol "; NONE)
             | SOME (s,ts) => 
               (case expect_EQUAL ts
-                of NONE => NONE
+                of NONE => (test := "error in let - expected equal "; NONE)
                  | SOME ts => 
                    (case parse_expr ts
-                     of NONE => NONE
+                     of NONE => (test:= "error in let - expected expr "; NONE)
                       | SOME (e1,ts) => 
                         (case expect_IN ts
-                          of NONE => NONE
+                          of NONE => (test := "error in let - expected in "; NONE)
                            | SOME ts => 
                              (case parse_expr ts
-                               of NONE => NONE
+                               of NONE => (test := "error in let - expected expr "; NONE)
                                 | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
 
+
+(* Question 1a *)
   and parse_aterm_LET_FUN ts = 
     (case expect_LET ts 
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts 
-           of NONE => NONE
+           of NONE => (test := "error in let - expected symbol "; NONE)
             | SOME (s,ts) => 
 	      (case parse_symList ts
-                of NONE => NONE
-                 | SOME (nil,ts) => NONE
+                of NONE => (test := "error in let - expected symbol list"; NONE)
+                 | SOME (nil,ts) => (test := "error in let - expected symbol list"; NONE)
                  | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
-                     of NONE => NONE
+                     of NONE => (test := "error in let - expected equal "; NONE)
                       | SOME ts => 
                         (case parse_expr ts
-                          of NONE => NONE
+                          of NONE => (test := "error in let - expected expr "; NONE)
                            | SOME (e1,ts) => 
                              (case expect_IN ts
-                               of NONE => NONE
+                               of NONE => (test := "error in let - expected in "; NONE)
                                 | SOME ts => 
                                   (case parse_expr ts
-                                    of NONE => NONE
+                                    of NONE => (test := "error in let - expected expr "; NONE)
                                     | SOME (e2,ts) => let 
                                         fun paramFun (paramS::nil) = I.EFun (paramS,e1)
                                           | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
@@ -569,29 +574,30 @@ structure Parser =  struct
                                         in
                                          SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
                                         end)))))))
+(* Question 2h *) 
   and parse_aterm_MAP ts = 
     (case expect_LBRACKET ts
         of NONE => NONE
         | SOME ts => 
           (case parse_expr ts
-             of NONE => NONE
+             of NONE => (test := "error in map - expected expr "; NONE)
              | SOME (e1,ts) =>
                 (case expect_BAR ts
-                   of NONE => NONE
+                   of NONE => (test := "error in map - expected bar "; NONE)
                    | SOME ts =>
                       (case expect_SYM ts
-                        of NONE => NONE
+                        of NONE => (test := "error in map - expected symbol "; NONE)
                         | SOME (s,ts) =>
                           (case expect_LARROW ts
-                            of NONE => NONE
+                            of NONE => (test := "error in map - expected larrow "; NONE)
                             | SOME ts =>
                                (case parse_expr ts 
-                                  of NONE => NONE
+                                  of NONE => (test := "error in map - expected expr "; NONE)
                                   | SOME (e2,ts) =>
                                     (case expect_RBRACKET ts
-                                       of NONE => NONE
+                                       of NONE => (test := "error in map - expected rbracket"; NONE)
                                        | SOME ts => SOME ((call2 "map" (I.EFun(s,e1)) e2),ts))))))))
-
+(* Question 2j *) 
   and parse_aterm_FILTER ts =
     (case expect_LBRACKET ts
         of NONE => NONE
@@ -612,13 +618,13 @@ structure Parser =  struct
                                 of NONE => NONE
                                 | SOME (e2,ts) =>
                                   (case expect_COMMA ts
-                                     of NONE => NONE
+                                     of NONE => (test := "error in filter - expected comma "; NONE)
                                      | SOME ts => 
                                        (case parse_expr ts
-                                          of NONE => NONE
+                                          of NONE => (test := "error in filter - expected expr "; NONE)
                                           | SOME (e3,ts) =>
                                             (case expect_RBRACKET ts 
-                                               of NONE => NONE
+                                               of NONE => (test := "error in filter - expected rbracket "; NONE)
                                                | SOME ts => let
                                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                                             in
@@ -640,6 +646,7 @@ structure Parser =  struct
 
   and parse_aterm_list_EMPTY ts = SOME ([], ts)
 
+  (* Question 2c*)
   and parse_aterm_EXPR_LIST ts =
     (case expect_LBRACKET ts
       of NONE => NONE
@@ -653,7 +660,7 @@ structure Parser =  struct
               (case expect_RBRACKET ts
                 of NONE => NONE
                  | SOME ts => SOME (es, ts))))
-
+    (*Question 2f*)
   and parse_aterm_INTERVAL ts =
     (case expect_LBRACKET ts
       of NONE => NONE
@@ -671,6 +678,7 @@ structure Parser =  struct
                           of NONE => NONE
                            | SOME ts => SOME (call2 "interval" e1 e2, ts))))))
 
+  (*Question 2d*)
   and parse_aterm_MATCH ts =
     (case expect_MATCH ts
       of NONE => NONE
@@ -720,11 +728,18 @@ structure Parser =  struct
                                                                             end
 
                                                                            )))))))))))))
+(*
+                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)I.EIdent "nil"
+                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
+                                          | paramFun _ = e1
+                                        in
+                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)*)
 
   fun parse ts = 
       (case parse_expr ts
         of SOME (e,[]) => e
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
-         | NONE => checkNone ts)
+         | NONE => parseError (!test))
+      
 
 end
