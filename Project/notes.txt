@@ -1,7 +1,9 @@
 Notes:
 	We will be on the server side. He can send us code that shows us how this works out
-	For the first pass stay with the user and then worry about socets
-	The I/O primitives of the language will be the same I/O primitives for the socet 
+	For the first pass stay with the user and then worry about sockets
+	The I/O primitives of the language will be the same I/O primitives for the socket 
 
 	to print something while also returning none we can just do a simple (print str ; NONE)
 	To do something with it we are going to have to step out of the option type. more probably are going to have to make our own option type (recreate SOME NONE)
+
+	Could we do a wrapper function? That would handle the calling of all the functions and remove the concern over having to pass along a variable from function to function to keep track of the progress of the program.`
