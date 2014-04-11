@@ -1,5 +1,5 @@
 (* 
- *   CODE FOR HOMEWORK 4
+ *   Evaluator for final project.
  *)
 
 
@@ -18,7 +18,6 @@ structure Evaluator = struct
    *   Primitive operations
    *)
 
- (* Question 2a *)
   fun primCons a (I.VList xs) = I.VList (a::xs)
     | primCons a _ = evalError "Error: No list has been provided"
     
@@ -33,10 +32,8 @@ structure Evaluator = struct
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
     | primIntHelp _ _ _= evalError "Error in interval function"
 
-(* Question 2e *)
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
-    | primInterval _ _ = evalError "Error in interval function"
-    
+    | primInterval _ _ = evalError "Error in interval function"    
 
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
     | primPlus _ _ = evalError "Addition is not possible"
@@ -44,8 +41,6 @@ structure Evaluator = struct
   fun primMinus (I.VInt a) (I.VInt b) = I.VInt (a-b)
     | primMinus _ _ = evalError "Subtraction is not possible"
 
-
-(* Question 2b *)
   fun primEqHelper (I.VList []) (I.VList []) = true
      | primEqHelper (I.VList (x::xs)) (I.VList []) = false
      | primEqHelper (I.VList []) (I.VList (x::xs)) = false
@@ -65,7 +60,7 @@ structure Evaluator = struct
     | primLess _ _ = I.VBool false
 
 			 
-  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs.")
+ fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs")
     | lookup name ((n,v)::env) = 
         if (n = name) then 
 	  v
@@ -87,10 +82,9 @@ structure Evaluator = struct
     | eval env (I.EApp (e1,e2)) = evalApp env (eval env e1) (eval env e2)
     | eval env (I.EPrimCall1 (f,e1)) = f (eval env e1)
     | eval env (I.EPrimCall2 (f,e1,e2)) = f (eval env e1) (eval env e2)
- (* Question 3a *)
     | eval env (I.ERecord fs) = I.VRecord (map (fn (s, e) => (s, eval env e)) fs)
     | eval env (I.EField (e,s)) = (lookup s (case (eval env e) of (I.VRecord e) => e
-                                              | _ => evalError "There is no record."))
+                                              | _ => evalError "There is no record"))
       
   and evalApp _ (I.VClosure (n,body,env)) v = eval ((n,v)::env) body
     | evalApp _ (I.VRecClosure (f,n,body,env)) v = let
@@ -98,11 +92,11 @@ structure Evaluator = struct
       in 
 	  eval new_env body
       end
-    | evalApp _ _ _ = evalError "cannot apply non-functional value"
+    | evalApp _ _ _ = evalError "Cannot apply non-functional value"
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
-    | evalIf _ _ _ _ = evalError "evalIf"
+    | evalIf _ _ _ _ = evalError "It is a mystery"
 		       
   and evalLet env id v body = eval ((id,v)::env) body
 
@@ -117,26 +111,25 @@ structure Evaluator = struct
    *   Initial environment (already in a form suitable for the environment)
    *)
 
-(* Question 2g *)
   fun initMap (I.VClosure (n,e,env)) (I.VList []) = I.VList []
     | initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
     | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                            val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
                                                            fun mapL (I.VList xs) = xs
-                                                             | mapL _ = evalError "initMap"
+                                                             | mapL _ = evalError "You're lost - get a new map"
                                                          in
                                                             I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
                                                          end
-    | initMap _ _ = evalError "initMap"
-(* Question 2i *)
+    | initMap _ _ = evalError "You're lost - get a new map"
+
   fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
     | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                               val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
                                                               fun filterL (I.VList xs) = xs
-                                                                | filterL _ = evalError "initFilter"
+                                                                | filterL _ = evalError "That's a silly filter"
                                                               val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
                                                               fun checkEq (I.VBool x) = x
-                                                                | checkEq _ = evalError "initFilter"
+                                                                | checkEq _ = evalError "That's a silly filter"
                                                             in
                                                               if (checkEq xApp)
                                                                 then I.VList (x::(filterL vFilter))
@@ -157,14 +150,12 @@ structure Evaluator = struct
 						 I.EIdent "a",
 						 I.EIdent "b")),
 			   [])),
-(* Question 2e *)
         ("interval", I.VClosure ("a", 
                            I.EFun ("b", 
                                    I.EPrimCall2 (primInterval,
                                                  I.EIdent "a",
                                                  I.EIdent "b")),
                            [])),
- (* Question 2a *)
        ("hd", I.VClosure ("a", 
                                 I.EPrimCall1 (primHd,
                                         I.EIdent "a"),
@@ -202,6 +193,5 @@ structure Evaluator = struct
 						  I.EIdent "a",
 						  I.EIdent "b")),
 			    []))]
-  
-				 
+  				 
 end
