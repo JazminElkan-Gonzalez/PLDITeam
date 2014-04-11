@@ -20,26 +20,26 @@ structure Evaluator = struct
 
  (* Question 2a *)
   fun primCons a (I.VList xs) = I.VList (a::xs)
-    | primCons a _ = evalError "primCons"
+    | primCons a _ = evalError "Error: No list has been provided"
     
-  fun primHd (I.VList []) = evalError "empty at PrimHd"
+  fun primHd (I.VList []) = evalError "Error: The list is empty"
     | primHd (I.VList (x::xs)) = x
-    | primHd _ = evalError "primHd"
+    | primHd _ = evalError "Error: Not a list"
 
   fun primTl (I.VList []) = I.VList []
     | primTl (I.VList (x::xs)) = I.VList xs
-    | primTl _ = evalError "primTl"
+    | primTl _ = evalError "Error: Not a list"
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
-    | primIntHelp _ _ _= evalError "primIntHelp"
+    | primIntHelp _ _ _= evalError "Error in interval function."
 
 (* Question 2e *)
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
-    | primInterval _ _ = evalError "primInterval"
+    | primInterval _ _ = evalError "Error in interval function."
     
 
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
-    | primPlus _ _ = evalError "primPlus"
+    | primPlus _ _ = evalError "Addition is not possible."
 
   fun primMinus (I.VInt a) (I.VInt b) = I.VInt (a-b)
     | primMinus _ _ = evalError "primMinus"
@@ -65,7 +65,7 @@ structure Evaluator = struct
     | primLess _ _ = I.VBool false
 
 			 
-  fun lookup (name:string) [] = evalError ("failed lookup for "^name)
+  fun lookup (name:string) [] = evalError ("There is no function called "^name)
     | lookup name ((n,v)::env) = 
         if (n = name) then 
 	  v
