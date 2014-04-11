@@ -65,7 +65,7 @@ structure Evaluator = struct
     | primLess _ _ = I.VBool false
 
 			 
-  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs.")
+  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs")
     | lookup name ((n,v)::env) = 
         if (n = name) then 
 	  v
@@ -90,7 +90,7 @@ structure Evaluator = struct
  (* Question 3a *)
     | eval env (I.ERecord fs) = I.VRecord (map (fn (s, e) => (s, eval env e)) fs)
     | eval env (I.EField (e,s)) = (lookup s (case (eval env e) of (I.VRecord e) => e
-                                              | _ => evalError "There is no record."))
+                                              | _ => evalError "There is no record"))
       
   and evalApp _ (I.VClosure (n,body,env)) v = eval ((n,v)::env) body
     | evalApp _ (I.VRecClosure (f,n,body,env)) v = let
@@ -98,11 +98,11 @@ structure Evaluator = struct
       in 
 	  eval new_env body
       end
-    | evalApp _ _ _ = evalError "cannot apply non-functional value"
+    | evalApp _ _ _ = evalError "Cannot apply non-functional value"
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
-    | evalIf _ _ _ _ = evalError "evalIf"
+    | evalIf _ _ _ _ = evalError "It is a mystery"
 		       
   and evalLet env id v body = eval ((id,v)::env) body
 
@@ -123,20 +123,21 @@ structure Evaluator = struct
     | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                            val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
                                                            fun mapL (I.VList xs) = xs
-                                                             | mapL _ = evalError "initMap"
+                                                             | mapL _ = evalError "You're lost - get a new map"
                                                          in
                                                             I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
                                                          end
-    | initMap _ _ = evalError "initMap"
+    | initMap _ _ = evalError "You're lost - get a new map"
+
 (* Question 2i *)
   fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
     | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                               val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
                                                               fun filterL (I.VList xs) = xs
-                                                                | filterL _ = evalError "initFilter"
+                                                                | filterL _ = evalError "That's a silly filter"
                                                               val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
                                                               fun checkEq (I.VBool x) = x
-                                                                | checkEq _ = evalError "initFilter"
+                                                                | checkEq _ = evalError "That's a silly filter"
                                                             in
                                                               if (checkEq xApp)
                                                                 then I.VList (x::(filterL vFilter))
