@@ -31,18 +31,18 @@ structure Evaluator = struct
     | primTl _ = evalError "Error: Not a list"
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
-    | primIntHelp _ _ _= evalError "Error in interval function."
+    | primIntHelp _ _ _= evalError "Error in interval function"
 
 (* Question 2e *)
   fun primInterval (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
-    | primInterval _ _ = evalError "Error in interval function."
+    | primInterval _ _ = evalError "Error in interval function"
     
 
   fun primPlus (I.VInt a) (I.VInt b) = I.VInt (a+b)
-    | primPlus _ _ = evalError "Addition is not possible."
+    | primPlus _ _ = evalError "Addition is not possible"
 
   fun primMinus (I.VInt a) (I.VInt b) = I.VInt (a-b)
-    | primMinus _ _ = evalError "primMinus"
+    | primMinus _ _ = evalError "Subtraction is not possible"
 
 
 (* Question 2b *)
@@ -53,8 +53,8 @@ structure Evaluator = struct
     (case (primEq x y) 
         of (I.VBool false) => false 
         | (I.VBool true) => (primEqHelper (I.VList xs) (I.VList ys))
-        | _ => evalError "This error should not happen. primEqHelper")
-     | primEqHelper _ _ = evalError "primEqHelper"
+        | _ => evalError "This error should not happen. Start over")
+     | primEqHelper _ _ = evalError "You are comparing apples to tofu"
 
   and primEq (I.VInt a) (I.VInt b) = I.VBool (a=b)
     | primEq (I.VBool a) (I.VBool b) = I.VBool (a=b)
@@ -65,7 +65,7 @@ structure Evaluator = struct
     | primLess _ _ = I.VBool false
 
 			 
-  fun lookup (name:string) [] = evalError ("There is no function called "^name)
+  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs.")
     | lookup name ((n,v)::env) = 
         if (n = name) then 
 	  v
@@ -90,7 +90,7 @@ structure Evaluator = struct
  (* Question 3a *)
     | eval env (I.ERecord fs) = I.VRecord (map (fn (s, e) => (s, eval env e)) fs)
     | eval env (I.EField (e,s)) = (lookup s (case (eval env e) of (I.VRecord e) => e
-                                              | _ => evalError "Not a record"))
+                                              | _ => evalError "There is no record."))
       
   and evalApp _ (I.VClosure (n,body,env)) v = eval ((n,v)::env) body
     | evalApp _ (I.VRecClosure (f,n,body,env)) v = let
