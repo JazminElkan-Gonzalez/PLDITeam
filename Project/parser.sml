@@ -179,8 +179,8 @@ structure Parser =  struct
                  ("~?[0-9]+",             produceInt),
                  ("\\(",                  produceLParen),
                  ("\\)",                  produceRParen),
-                 ("{",                  produceLBrace),
-                 ("}",                  produceRBrace),
+                 ("{",                    produceLBrace),
+                 ("}",                    produceRBrace),
                  ("\\[",                  produceLBracket),
                  ("\\]",                  produceRBracket)]
   end
