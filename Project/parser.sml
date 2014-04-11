@@ -424,7 +424,6 @@ structure Parser =  struct
               parse_aterm_PARENS,
 	      parse_aterm_IF,
 	      parse_aterm_LET,
-	      parse_aterm_LET_FUN,
         parse_aterm_INTERVAL,
         parse_aterm_MATCH,
         parse_aterm_EXPR_LIST,
@@ -531,30 +530,9 @@ structure Parser =  struct
            of NONE => (err := "error in let - expected symbol "; NONE)
             | SOME (s,ts) => 
               (case expect_EQUAL ts
-                of NONE => (err := "error in let - expected equal "; NONE)
-                 | SOME ts => 
-                   (case parse_expr ts
-                     of NONE => (err:= "error in let - expected expr "; NONE)
-                      | SOME (e1,ts) => 
-                        (case expect_IN ts
-                          of NONE => (err := "error in let - expected in "; NONE)
-                           | SOME ts => 
-                             (case parse_expr ts
-                               of NONE => (err := "error in let - expected expr "; NONE)
-                                | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
-
-
-(* Question 1a *)
-  and parse_aterm_LET_FUN ts = 
-    (case expect_LET ts 
-      of NONE => NONE
-       | SOME ts => 
-         (case expect_SYM ts 
-           of NONE => (err := "error in let - expected symbol "; NONE)
-            | SOME (s,ts) => 
-	      (case parse_symList ts
-                of NONE => (err := "error in let - expected symbol list"; NONE)
-                 | SOME (nil,ts) => (err := "error in let - expected symbol list"; NONE)
+                of NONE => (case parse_symList ts
+                        of NONE => (err := "error in let - expected equal or symbol"; NONE)
+                        | SOME (nil,ts) => (err := "error in let - expected symbol list"; NONE)
                  | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
                      of NONE => (err := "error in let - expected equal "; NONE)
@@ -573,7 +551,19 @@ structure Parser =  struct
                                           | paramFun _ = e1
                                         in
                                          SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
-                                        end)))))))
+                                        end)))))
+                 | SOME ts => 
+                   (case parse_expr ts
+                     of NONE => (err:= "error in let - expected expr "; NONE)
+                      | SOME (e1,ts) => 
+                        (case expect_IN ts
+                          of NONE => (err := "error in let - expected in "; NONE)
+                           | SOME ts => 
+                             (case parse_expr ts
+                               of NONE => (err := "error in let - expected expr "; NONE)
+                                | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))
+
+
 (* Question 2h *) 
   and parse_aterm_MAP ts = 
     (case expect_LBRACKET ts
