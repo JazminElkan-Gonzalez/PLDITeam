@@ -92,7 +92,7 @@ structure Evaluator = struct
       in 
 	  eval new_env body
       end
-    | evalApp _ a b = evalError ("Cannot apply "^(I.stringOfValue (a))^" to "^(I.stringOfValue (b)))
+    | evalApp _ _ _ = evalError "Cannot apply non-functional value"
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
@@ -193,5 +193,6 @@ structure Evaluator = struct
 						  I.EIdent "a",
 						  I.EIdent "b")),
 			    []))]
-  				 
+  
+				 
 end

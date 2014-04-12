@@ -718,12 +718,6 @@ structure Parser =  struct
                                                                             end
 
                                                                            )))))))))))))
-(*
-                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)I.EIdent "nil"
-                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
-                                          | paramFun _ = e1
-                                        in
-                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)*)
 
   fun parse ts = 
       (case parse_expr ts
