@@ -80,6 +80,7 @@ structure Parser =  struct
 		 | T_BAR
 		 | T_MATCH
 		 | T_WITH
+     | T_DEF
 
 
   fun stringOfToken T_LET = "T_LET"
@@ -113,6 +114,7 @@ structure Parser =  struct
     | stringOfToken T_BAR = "T_BAR"
     | stringOfToken T_MATCH = "T_MATCH"
     | stringOfToken T_WITH = "T_WITH"
+    | stringOfToken T_DEF = "T_DEF"
 
                    
   fun whitespace _ = NONE
@@ -126,6 +128,7 @@ structure Parser =  struct
     | produceSymbol "else" = SOME (T_ELSE)
     | produceSymbol "match" = SOME (T_MATCH)
     | produceSymbol "with" = SOME (T_WITH)
+    | produceSymbol "def" = SOME (T_DEF)
     | produceSymbol text = SOME (T_SYM text)
                            
   fun produceInt text = (case Int.fromString text
@@ -216,6 +219,9 @@ structure Parser =  struct
   (* 
    *   A SIMPLE PARSER FOR AN ML-LIKE SYNTAX
    * 
+   *   decl ::= T_DEF T_SYM T_EQUAL expr  
+   *            T_DEF T_SYM sym_list T_EQUAL expr
+   *            expr
    *
    *   expr ::= eterm T_EQUAL eterm        
    *            eterm T_LESS eterm         
@@ -718,18 +724,61 @@ structure Parser =  struct
                                                                             end
 
                                                                            )))))))))))))
-(*
-                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)I.EIdent "nil"
-                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
-                                          | paramFun _ = e1
-                                        in
-                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)*)
+  
+  datatype decl = DDef of string * I.expr
+                | DExpr of I.expr
 
-  fun parse ts = 
+     
+ fun parse_decl ts = let
+   fun decl_val ts = 
+    (case expect [T_DEF] ts
+      of NONE => NONE
+       | SOME ts => 
+         (case expect_SYM ts
+           of NONE => (err := "error in def - expected symbol"; NONE)
+          | SOME (s,ts) =>
+            (case expect [T_EQUAL] ts
+              of NONE => (err := "error in def - expected equal"; NONE)
+              | SOME ts => 
+                (case parse_expr ts
+                  of NONE => (err := "error in def - expected expr"; NONE)
+                  | SOME (e,ts) => SOME (DDef (s,e),ts)))))
+   fun decl_fun ts = 
+     (case expect [T_DEF] ts
+       of NONE => NONE
+       | SOME ts =>
+         (case expect_SYM ts
+           of NONE => (err := "error in def - expected symbol"; NONE)
+           | SOME (s,ts) => 
+             (case expect_SYM ts
+               of NONE => (err := "error in def - expected symbol"; NONE)
+               | SOME (param,ts) => 
+                 (case expect [T_EQUAL] ts
+                   of NONE => (err := "error in def - expected equal"; NONE)
+                   | SOME ts => 
+                     (case parse_expr ts 
+                       of NONE => (err := "error in def - expected expr"; NONE)
+                       | SOME (e,ts) => 
+                          SOME (DDef (s,I.ELetFun (s,param,e,(I.EIdent s))),ts))))))
+   fun decl_expr ts = 
+     (case parse_expr ts
+       of NONE => NONE
+       | SOME (e,ts) => SOME (DExpr e, ts))
+  in
+    choose [decl_val, decl_fun, decl_expr] ts
+  end
+
+
+  fun parseExpr ts = 
       (case parse_expr ts
         of SOME (e,[]) => e
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
          | NONE => parseError (!err))
-      
 
+  fun parseDecl ts = 
+      (case parse_decl ts
+        of SOME (d,[]) => d
+         | SOME (_,_)  => parseError "leftover characters past parsed expression"
+         | NONE => parseError (!err))
+      
 end

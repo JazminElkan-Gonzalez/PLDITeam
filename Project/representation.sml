@@ -10,6 +10,12 @@ structure InternalRepresentation = struct
 		 | VRecClosure of string * string * expr * (string * value) list
                  | VList of value list
 		 | VRecord of (string * value) list
+     | VNil
+     | VCons of value * value
+     | VDelayed of delay ref
+
+  and delay = DelExpr of expr * (string * value) list
+      | DelVal of value
 			    
   and expr = EVal of value
 	   | EFun of string * expr
@@ -33,6 +39,10 @@ structure InternalRepresentation = struct
       | strV (VBool false) = "VBool false"
       | strV (VClosure (n,e,_)) = $ ["VClosure (", n, ",", strE e, ")"]
       | strV (VRecClosure (f,n,e,_)) = $ ["VRecClosure (", f, ",",n, ",", strE e, ")"]
+      | strV (VNil) = "VNil"
+      | strV (VCons (v1,v2)) = strCon "VCons" strV [v1,v2]
+      | strV (VDelayed (ref (DelVal v))) = strCon "VDelayed" strV [v]
+      | strV (VDelayed (ref (DelExpr (e,_)))) = strCon "VDelayed" strE [e]
       | strV (VList vs) = $ ["VList [", $+ (map strV vs), "]"]
       | strV (VRecord fvs) = $ ["VRecord [", $+ (map strFV fvs), "]"]
     and strFV (s,v) = $ ["(", s, ",", strV v, ")"]
@@ -68,6 +78,18 @@ structure InternalRepresentation = struct
       in
         String.concat ["{", String.concatWith "," (map str fvs), "}"]
       end
+    | stringOfValue (VNil) = "[]"
+    | stringOfValue (VCons (v1,v2)) = let
+        fun str v (VCons (v1,v2)) = String.concat [stringOfValue v,
+                                             ",",
+                                                   str v1 v2]
+          | str v _ = String.concat [stringOfValue v, "]"]
+      in
+        "["^(str v1 v2)
+      end
+    | stringOfValue (VDelayed (ref (DelVal v))) = stringOfValue v
+    | stringOfValue (VDelayed (ref (DelExpr (e,_)))) = 
+        String.concat ["<delayed ", stringOfExpr e, ">"]
 
   fun printValue v = (print (stringOfValue v);
 		      print "\n")
