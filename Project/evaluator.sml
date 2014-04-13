@@ -53,8 +53,8 @@ structure Evaluator = struct
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
-    | evalIf _ _ _ _ = evalError "It is a mystery"
-           
+    | evalIf _ _ _ _ = evalError "Error at evaluating if statement - input is not a boolean"
+		       
   and evalLet env id v body = eval ((id,v)::env) body
 
   and evalLetFun env id param expr body = let
@@ -165,20 +165,20 @@ structure Evaluator = struct
     | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                            val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
                                                            fun mapL (I.VList xs) = xs
-                                                             | mapL _ = evalError "You're lost - get a new map"
+                                                             | mapL _ = evalError "Error at map - input is not a list"
                                                          in
                                                             I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
                                                          end
-    | initMap _ _ = evalError "You're lost - get a new map"
+    | initMap _ _ = evalError "Error at map - input is not a mapping function"
 
   fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
     | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
                                                               val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
                                                               fun filterL (I.VList xs) = xs
-                                                                | filterL _ = evalError "That's a silly filter"
+                                                                | filterL _ = evalError "Error at filter list - input is not a list"
                                                               val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
                                                               fun checkEq (I.VBool x) = x
-                                                                | checkEq _ = evalError "That's a silly filter"
+                                                                | checkEq _ = evalError "Error at filter list - input is not a filter function"
                                                             in
                                                               if (checkEq xApp)
                                                                 then I.VList (x::(filterL vFilter))
