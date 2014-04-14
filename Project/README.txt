@@ -2,8 +2,8 @@ Ariana Chae, Jazmin Gonzalez-Rivero, Caitlin Riley
 
 To compile:
 	1) Start SML/NJ
-	2) Type "CM.make "make.cm"
-	3) Type "Shell.run[]"
+	2) Type "CM.make "make.cm";"
+	3) Type "Shell.run[];"
 
 Sample outputs:
 
@@ -37,9 +37,13 @@ Sample outputs:
 
 Project organization:
 
-	In order to allow for the shell to catch for syntax errors, we have changed the errors in the evaluator to be more descriptive, and we are updating and returning a reference string to specify an error every time a program fails to move on to the next step in a function in the parser.
+	The bulk of the work done thus far for our project has been trial and error to find the best ways to implement different aspects of our project. Although the final method we have decided on appears quite simple, we have determined that it is the best way to accomplish our goals at the moment. Some methods we have explored include creating our own SOME and NONE option datatypes, trying to have a reference pointer to pass our tokens to automate the process of creating error messages (as opposed to our current option), exploring different places to put our external files to read to (i.e. creating a primitive function in the evaluator), and more. We have also figured out how to use sockets to read/write to and from files.
+
+	In order to allow for the shell to catch for syntax errors, we have changed the errors in the evaluator to be more descriptive, and we are updating and returning a reference string to specify an error every time a program fails to move on to the next step in a function in the parser. We also pulled code from homework 4 and lecture 10 (the lazy evaluator) to implement better function and variable definitions.
 
 
 Next steps:
 
-	Now that we have figured out how to help the user recognize where they made a syntax error in their program, the next step is to find a way to save the tokens so that they do not have to rewrite the entire program and parse/evaluate it all over again.
+	The next step is to find a way to create an environment from within an environment (or something similar) to allow us to dynamically pull someone's file and check it as they type. This means we are moving the user input away from the shell, although it will be still be running in parallel, and moving towards reading programs from an external file which will then be parsed. This will take us one step closer to our goal of creating a dynamic syntax checker for our language's surface syntax.
+
+	From here, if we have time, we will make more intelligent error messages to help the users more accurately diagnose their problems.
