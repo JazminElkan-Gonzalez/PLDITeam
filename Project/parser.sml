@@ -342,10 +342,17 @@ structure Parser =  struct
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
-  fun findToken tk [] = "expected"^(stringOfToken tk)
-    | findToken tk (t::ts) = if tk = t then 
-                                convertToString ts
-                             else findToken tk ts
+  fun findToken tk [] = "expected "^(stringOfToken tk)
+    | findToken tk (t::ts) = (case (expect_SYM (t::ts))
+                                of NONE => 
+                                (case (expect_INT (t::ts)) 
+                                 of NONE => 
+                                (case (expect [tk] (t::ts))
+                                        of NONE =>
+                                         findToken tk ts
+                                | SOME ts => (convertToString (t::ts)))
+                              | SOME (i,ts)=> (convertToString (t::ts)))
+                             | SOME (i,ts)=> (convertToString (t::ts)))
 
 
   fun choose [] ts = NONE
@@ -506,10 +513,10 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>"; NONE)
+        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym expr>"; NONE)
         | SOME (s,ts) =>
         (case parse_expr ts
-          of NONE => (err := "error in field - expected expr "; NONE)
+          of NONE => (err := "error in field - expected expr " ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
           | SOME (e,ts) => SOME (I.EField (e,s) , ts))))
 
   and parse_aterm_TRUE ts = 
@@ -532,13 +539,13 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
 	 (case expect_SYM ts
-	   of NONE => (err := "error in function - expected symbol "; NONE)
+	   of NONE => (err := "error in function - expected symbol \n"^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_RARROW ts); NONE)
 	    | SOME (s,ts) => 
 	      (case expect_RARROW ts
-		of NONE => (err := "error in function - expected rarrow "; NONE)
+		of NONE => (err := "error in function - expected rarrow \n"^ (convertToString (!soFar)) ^ "<Right Arrow expr>"; NONE)
 		 | SOME ts => 
 		   (case parse_expr ts
-		     of NONE => (err := "error in function - expected expr "; NONE)
+		     of NONE => (err := "error in function - expected expr \n"^ (convertToString (!soFar)) ^ "<expr>"; NONE)
 		      | SOME (e,ts) => SOME (I.EFun (s,e), ts)))))
 
   and parse_aterm_PARENS ts = 
@@ -546,7 +553,7 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          (case parse_expr ts
-           of NONE => (err := "expected expr "; NONE)
+           of NONE => (err := "expected expr " ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_RPAREN ts); NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
                 of NONE => (err := "expected rparen "; NONE)
