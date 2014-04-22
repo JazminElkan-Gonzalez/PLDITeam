@@ -287,20 +287,23 @@ structure Parser =  struct
    *)
 
   val err = ref "unknown error"
+  val soFar = ref (lexString "")
+  val savedSoFar = ref (lexString "")
 
-  fun expect_INT ((T_INT i)::ts) = SOME (i,ts)
+  fun expect_INT ((T_INT i)::ts) = (soFar := !soFar@[T_INT i];SOME (i,ts))
     | expect_INT _ = NONE
 
-  fun expect_SYM ((T_SYM s)::ts) = SOME (s,ts)
+  fun expect_SYM ((T_SYM s)::ts) = (soFar := !soFar@[T_SYM s];SOME (s,ts))
     | expect_SYM _ = NONE
+
+
 
   (*   expect tokens ts 
    *   checks if ts starts with tokens specified
    *   this can only be used for tokens that do not parse to a value 
    *)
 
-  val soFar = ref (lexString "")
-  val savedSoFar = ref (lexString "")
+
 
   fun expect [] ts = SOME ts
     | expect (token::tokens) (t::ts) = if token = t then 
@@ -361,11 +364,22 @@ structure Parser =  struct
     fun exprString ts = "<expr>"
 
 
+   fun makeError funName errorName beforeTokens (token searchToken) ts= err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> " ^ (findToken searchToken ts)
+      | makeError funName errorName beforeTokens [] []= err := "error in " ^ funName  ^ "- expected " ^ errorName ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> "
+      | makeError funName errorName beforeTokens sToken ts= if sToken = "sym" then
+        err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (findSym ts)
+        else if sToken = "int" then
+        err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (findInt ts)
+        else if sToken = "expr" then
+        err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (exprString ts)
+        else print "YOU ARE JUST WRONG"
+      | makeError _ _ _ _ _ = err := "huh?"
+
 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
       (case parser ts
-	of NONE => (soFar := lexString  "";choose parsers ts)
+	of NONE => choose parsers ts
 	 | s => s)
 
 
@@ -376,8 +390,6 @@ structure Parser =  struct
   fun call1 oper e1 = I.EApp (I.EIdent oper, e1)
 
   fun call2 oper e1 e2 = I.EApp (I.EApp (I.EIdent oper, e1), e2)
-
-
 
 
   fun parse_expr ts = 
@@ -835,7 +847,7 @@ structure Parser =  struct
          | NONE => parseError (!err)))
 
   fun parseDecl ts = 
-      (err := "unknown error"; (case parse_decl ts
+      (err := "unknown error"; soFar := lexString  "";savedSoFar := lexString  "";(case parse_decl ts
         of SOME (d,[]) => d
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
          | NONE => parseError (!err)))
