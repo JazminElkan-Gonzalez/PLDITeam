@@ -116,6 +116,40 @@ structure Parser =  struct
     | stringOfToken T_WITH = "T_WITH"
     | stringOfToken T_DEF = "T_DEF"
 
+
+      fun stringOfTokenEnglish T_LET = "let"
+    | stringOfTokenEnglish T_IN = "in"
+    | stringOfTokenEnglish (T_SYM s) = s
+    | stringOfTokenEnglish (T_INT i) = Int.toString i
+    | stringOfTokenEnglish T_TRUE = "true"
+    | stringOfTokenEnglish T_FALSE = "false"
+    | stringOfTokenEnglish T_EQUAL = "="
+    | stringOfTokenEnglish T_LESS = ">"
+    | stringOfTokenEnglish T_IF  = "if"
+    | stringOfTokenEnglish T_THEN  = "then"
+    | stringOfTokenEnglish T_ELSE  = "else"
+    | stringOfTokenEnglish T_LPAREN = "("
+    | stringOfTokenEnglish T_RPAREN = ")"
+    | stringOfTokenEnglish T_PLUS = "+"
+    | stringOfTokenEnglish T_MINUS = "-"
+    | stringOfTokenEnglish T_TIMES = "*"
+    | stringOfTokenEnglish T_BACKSLASH = "/"
+    | stringOfTokenEnglish T_RARROW = "->"
+    | stringOfTokenEnglish T_LARROW = "<-"
+    | stringOfTokenEnglish T_DCOLON = "::"
+    | stringOfTokenEnglish T_COMMA = ","
+    | stringOfTokenEnglish T_LBRACKET = "["
+    | stringOfTokenEnglish T_RBRACKET = "]"
+    | stringOfTokenEnglish T_LBRACE = "{"
+    | stringOfTokenEnglish T_RBRACE = "}"
+    | stringOfTokenEnglish T_DOT = "."
+    | stringOfTokenEnglish T_HASH = "#"
+    | stringOfTokenEnglish T_DDOTS = ".."
+    | stringOfTokenEnglish T_BAR = "|"
+    | stringOfTokenEnglish T_MATCH = "match"
+    | stringOfTokenEnglish T_WITH = "with"
+    | stringOfTokenEnglish T_DEF = "def"
+
                    
   fun whitespace _ = NONE
                      
@@ -265,9 +299,11 @@ structure Parser =  struct
    *   this can only be used for tokens that do not parse to a value 
    *)
 
+  val soFar = ref (lexString "")
+
   fun expect [] ts = SOME ts
     | expect (token::tokens) (t::ts) = if token = t then 
-					 expect tokens ts
+					 (soFar := !soFar@[t];expect tokens ts)
 				       else NONE
     | expect _ _ = NONE
 
@@ -302,12 +338,13 @@ structure Parser =  struct
   fun expect_MATCH ts = expect [T_MATCH] ts
   fun expect_WITH ts = expect [T_WITH] ts
 			  
-
+  fun convertToString [] = ""
+    | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
       (case parser ts
-	of NONE => choose parsers ts
+	of NONE => (soFar := lexString  "";choose parsers ts)
 	 | s => s)
 
 
@@ -450,7 +487,7 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts => 
       (case parse_fields ts
-        of NONE => (err := "error in record - expected field "; NONE)
+        of NONE => (err := "error in record - expected field"  ; NONE)
         | SOME (recordList, ts) =>
         (case expect_RBRACE ts
           of NONE => (err := "error in record - expected rbrace "; NONE)
@@ -462,7 +499,7 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => (err := "error in field - expected symbol "; NONE)
+        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>"; NONE)
         | SOME (s,ts) =>
         (case parse_expr ts
           of NONE => (err := "error in field - expected expr "; NONE)
@@ -533,7 +570,7 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts 
-           of NONE => (err := "error in let - expected symbol "; NONE)
+           of NONE => (err := "error in let - expected symbol \n"^ (convertToString (!soFar)) ^ "<sym>"; NONE)
             | SOME (s,ts) => 
               (case expect_EQUAL ts
                 of NONE => (case parse_symList ts
