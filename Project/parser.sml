@@ -343,10 +343,15 @@ structure Parser =  struct
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
   fun findToken tk [] = "expected "^(stringOfToken tk)
-    | findToken tk (t::ts) = (case (expect [tk] (t::ts))
+    | findToken tk (t::ts) = (case (expect_SYM (t::ts))
+                                of NONE => 
+                                (case (expect_INT (t::ts)) 
+                                 of NONE => 
+                                (case (expect [tk] (t::ts))
                                         of NONE =>
                                          findToken tk ts
                                 | SOME ts => (convertToString (t::ts)))
+
     fun findSym [] = "expected symbol"
         | findSym (t::ts) = (case expect_SYM (t::ts)
                         of NONE => 
@@ -357,6 +362,7 @@ structure Parser =  struct
                         of NONE => 
                                 findInt ts
                         | SOME (s,ts) => (convertToString (t::ts)))
+
 
 
   fun choose [] ts = NONE
@@ -517,7 +523,7 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym expr>" ^(findSym ts); NONE)
+        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym expr>"; NONE)
         | SOME (s,ts) =>
         (case parse_expr ts
           of NONE => (err := "error in field - expected expr " ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
@@ -631,7 +637,7 @@ structure Parser =  struct
         of NONE => NONE
         | SOME ts => 
           (case parse_expr ts
-             of NONE => (err := "error in map - expected expr "; NONE)
+             of NONE => (err := "error in map - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_BAR ts); NONE)
              | SOME (e1,ts) =>
                 (case expect_BAR ts
                    of NONE => (err := "error in map or filter - expected bar \nerror in interval - expected ddots \nerror in list - expected expr or rparen"; NONE)
@@ -669,13 +675,13 @@ structure Parser =  struct
                                 of NONE => NONE
                                 | SOME (e2,ts) =>
                                   (case expect_COMMA ts
-                                     of NONE => (err := "error in map - expected rbracket \nerror in filter - expected comma"; NONE)
+                                     of NONE => (err := "error in map - expected rbracket \nerror in filter - expected comma \n" ^ (convertToString (!soFar)) ^ "<comma expr>"; NONE)
                                      | SOME ts => 
                                        (case parse_expr ts
-                                          of NONE => (err := "error in filter - expected expr "; NONE)
+                                          of NONE => (err := "error in filter - expected expr  \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_RBRACKET ts); NONE)
                                           | SOME (e3,ts) =>
                                             (case expect_RBRACKET ts 
-                                               of NONE => (err := "error in filter - expected rbracket "; NONE)
+                                               of NONE => (err := "error in filter - expected rbracket  \n" ^ (convertToString (!soFar)) ^ "<rbracket>"; NONE)
                                                | SOME ts => let
                                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                                             in
@@ -711,6 +717,7 @@ structure Parser =  struct
               (case expect_RBRACKET ts
                 of NONE => NONE
                  | SOME ts => SOME (es, ts))))
+    
     (*Question 2f*)
   and parse_aterm_INTERVAL ts =
     (case expect_LBRACKET ts
@@ -720,13 +727,13 @@ structure Parser =  struct
             of NONE => NONE
              | SOME (e1, ts) =>
                (case expect_DDOTS ts
-                 of NONE => (err := "error in interval - expected ddots"; NONE)
+                 of NONE => (err := "error in interval - expected ddots \n" ^ (convertToString (!soFar)) ^ "<ddots expr>"; NONE)
                   | SOME ts =>
                     (case parse_expr ts
-                      of NONE => (err := "error in interval - expected expr"; NONE)
+                      of NONE => (err := "error in interval - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_RBRACKET ts); NONE)
                       | SOME (e2, ts) => 
                         (case expect_RBRACKET ts
-                          of NONE => (err := "error in interval - expected rbracket"; NONE)
+                          of NONE => (err := "error in interval - expected rbracket \n" ^ (convertToString (!soFar)) ^ "<rbracket>"; NONE)
                            | SOME ts => SOME (call2 "interval" e1 e2, ts))))))
 
   (*Question 2d*)
@@ -735,40 +742,40 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          (case parse_expr ts
-            of NONE => (err := "error in match - expected expr"; NONE)
+            of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_WITH ts); NONE)
              | SOME (e1,ts) =>
                (case expect_WITH ts
-                of NONE => (err := "error in match - expected with"; NONE)
+                of NONE => (err := "error in match - expected with \n" ^ (convertToString (!soFar)) ^ "<with>" ^ (findToken T_LBRACKET ts); NONE)
                  | SOME ts =>
                    (case expect_LBRACKET ts
-                      of NONE => (err := "error in match - expected lbracket"; NONE)
+                      of NONE => (err := "error in match - expected lbracket \n" ^ (convertToString (!soFar)) ^ "<lbracket>" ^ (findToken T_RBRACKET ts); NONE)
                        | SOME ts =>
                          (case expect_RBRACKET ts
-                            of NONE => (err := "error in match - expected rbracket"; NONE)
+                            of NONE => (err := "error in match - expected rbracket \n" ^ (convertToString (!soFar)) ^ "<rbracket>" ^ (findToken T_RARROW ts); NONE)
                              | SOME ts =>
                                (case expect_RARROW ts
-                                  of NONE => (err := "error in match - expected rarrow"; NONE)
+                                  of NONE => (err := "error in match - expected rarrow \n" ^ (convertToString (!soFar)) ^ "<rarrow expr>"; NONE)
                                    | SOME ts =>
                                      (case parse_expr ts
-                                      of NONE => (err := "error in match - expected expr"; NONE)
+                                      of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_BAR ts); NONE)
                                        | SOME (e2, ts) =>
                                          (case expect_BAR ts
-                                            of NONE => (err := "error in match - expected bar"; NONE)
+                                            of NONE => (err := "error in match - expected bar \n" ^ (convertToString (!soFar)) ^ "<bar>" ((findSym ts); NONE)
                                              | SOME ts =>
                                                (case expect_SYM ts
-                                                  of NONE => (err := "error in match - expected sym"; NONE)
+                                                  of NONE => (err := "error in match - expected sym \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_DCOLON ts); NONE)
                                                    | SOME (sym1,ts) =>
                                                      (case expect_DCOLON ts
-                                                        of NONE => (err := "error in match - expected dcolon"; NONE)
+                                                        of NONE => (err := "error in match - expected dcolon \n" ^ (convertToString (!soFar)) ^ "<dcolon>" ^ (findSym ts); NONE)
                                                          | SOME ts =>
                                                            (case expect_SYM ts
-                                                              of NONE => (err := "error in match - expected sym"; NONE)
+                                                              of NONE => (err := "error in match - expected sym \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_RARROW ts); NONE)
                                                                | SOME (sym2,ts) =>
                                                                  (case expect_RARROW ts
-                                                                    of NONE => (err := "error in match - expected rarrow"; NONE)
+                                                                    of NONE => (err := "error in match - expected rarrow \n" ^ (convertToString (!soFar)) ^ "<rarrow expr>"; NONE)
                                                                      | SOME ts =>
                                                                        (case parse_expr ts
-                                                                          of NONE => (err := "error in match - expected expr"; NONE)
+                                                                          of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
                                                                            | SOME (e3, ts) =>
 
                                                                            let
@@ -790,29 +797,29 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts
-           of NONE => (err := "error in def - expected symbol"; NONE)
+           of NONE => (err := "error in def - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_EQUAL ts); NONE)
           | SOME (s,ts) =>
             (case expect [T_EQUAL] ts
-              of NONE => (err := "error in def - expected equal"; NONE)
+              of NONE => (err := "error in def - expected equal \n" ^ (convertToString (!soFar)) ^ "<= expr>"; NONE)
               | SOME ts => 
                 (case parse_expr ts
-                  of NONE => (err := "error in def - expected expr"; NONE)
+                  of NONE => (err := "error in def - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
                   | SOME (e,ts) => SOME (DDef (s,e),ts)))))
    fun decl_fun ts = 
      (case expect [T_DEF] ts
        of NONE => NONE
        | SOME ts =>
          (case expect_SYM ts
-           of NONE => (err := "error in def - expected symbol"; NONE)
+           of NONE => (err := "error in def - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findSym ts); NONE)
            | SOME (s,ts) => 
              (case expect_SYM ts
-               of NONE => (err := "error in def - expected symbol"; NONE)
+               of NONE => (err := "error in def - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_EQUAL ts); NONE)
                | SOME (param,ts) => 
                  (case expect [T_EQUAL] ts
-                   of NONE => (err := "error in def - expected equal"; NONE)
+                   of NONE => (err := "error in def - expected equal \n" ^ (convertToString (!soFar)) ^ "< = expr>"; NONE)
                    | SOME ts => 
                      (case parse_expr ts 
-                       of NONE => (err := "error in def - expected expr"; NONE)
+                       of NONE => (err := "error in def - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
                        | SOME (e,ts) => 
                           SOME (DDef (s,I.ELetFun (s,param,e,(I.EIdent s))),ts))))))
    fun decl_expr ts = 
