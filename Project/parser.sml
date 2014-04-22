@@ -343,15 +343,10 @@ structure Parser =  struct
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
   fun findToken tk [] = "expected "^(stringOfToken tk)
-    | findToken tk (t::ts) = (case (expect_SYM (t::ts))
-                                of NONE => 
-                                (case (expect_INT (t::ts)) 
-                                 of NONE => 
-                                (case (expect [tk] (t::ts))
+    | findToken tk (t::ts) = (case (expect [tk] (t::ts))
                                         of NONE =>
                                          findToken tk ts
                                 | SOME ts => (convertToString (t::ts)))
-
     fun findSym [] = "expected symbol"
         | findSym (t::ts) = (case expect_SYM (t::ts)
                         of NONE => 
