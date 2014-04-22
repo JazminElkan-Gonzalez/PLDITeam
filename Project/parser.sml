@@ -338,15 +338,15 @@ structure Parser =  struct
   fun expect_MATCH ts = expect [T_MATCH] ts
   fun expect_WITH ts = expect [T_WITH] ts
 			  
-<<<<<<< HEAD
+
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
-=======
+
   fun findToken tk [] = "expected"^(stringOfToken tk)
     | findToken tk (t::ts) = if tk = t then 
-                                stringOfToken t 
+                                convertToString ts
                              else findToken tk ts
->>>>>>> 5e03802dab19af0c4e284a1f46eff168dcbe97c9
+
 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
