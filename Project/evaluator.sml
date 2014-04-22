@@ -96,7 +96,8 @@ structure Evaluator = struct
   end
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
-    | primIntHelp _ _ _= evalError "Error in interval function"
+    | primIntHelp (I.VCons ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VCons ks) else (primIntHelp (primCons (I.VInt j) (I.VCons ks)) (I.VInt (j-1)) (I.VInt (newI)))
+    | primIntHelp ks _ _= evalError ("Error in interval function "^(I.stringOfValue (ks)))
 
   and primInterval v1 v2 = let
       fun primInterval' (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))

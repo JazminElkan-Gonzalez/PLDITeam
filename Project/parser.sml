@@ -338,8 +338,15 @@ structure Parser =  struct
   fun expect_MATCH ts = expect [T_MATCH] ts
   fun expect_WITH ts = expect [T_WITH] ts
 			  
+<<<<<<< HEAD
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
+=======
+  fun findToken tk [] = "expected"^(stringOfToken tk)
+    | findToken tk (t::ts) = if tk = t then 
+                                stringOfToken t 
+                             else findToken tk ts
+>>>>>>> 5e03802dab19af0c4e284a1f46eff168dcbe97c9
 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
@@ -424,11 +431,11 @@ structure Parser =  struct
 		  of NONE => SOME (e1,ts)
 		   | SOME ts => 
 		     (case parse_term ts
-		       of NONE => NONE
+		       of NONE => (err := "expected second term"; NONE)
 			| SOME (e2,ts) => SOME (call2 "sub" e1 e2, ts)))
 	      | SOME ts => 
 		(case parse_term ts
-		  of NONE => NONE
+		  of NONE => (err := "expected second term"; NONE)
 		   | SOME (e2,ts) => SOME (call2 "add" e1 e2, ts))))
 
 
@@ -556,7 +563,7 @@ structure Parser =  struct
                 of NONE => (err := "error in if - expected then "; NONE)
                  | SOME ts => 
                    (case parse_expr ts
-                     of NONE => (err := "error in if - expected expr "; NONE)
+                     of NONE => (err := "error in if - expected expr "^(findToken T_ELSE ts); NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
                           of NONE => (err := "error in if - expected else "; NONE)
@@ -574,14 +581,14 @@ structure Parser =  struct
             | SOME (s,ts) => 
               (case expect_EQUAL ts
                 of NONE => (case parse_symList ts
-                        of NONE => (err := "error in let - expected equal or symbol"; NONE)
+                        of NONE => (err := "error in let - expected equal or symbol \n"^(findToken T_IN ts); NONE)
                         | SOME (nil,ts) => (err := "error in let - expected symbol list"; NONE)
                  | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
                      of NONE => (err := "error in let - expected equal "; NONE)
                       | SOME ts => 
                         (case parse_expr ts
-                          of NONE => (err := "error in let - expected expr "; NONE)
+                          of NONE => (err := "error in let - expected expr \n"^(findToken T_IN ts); NONE)
                            | SOME (e1,ts) => 
                              (case expect_IN ts
                                of NONE => (err := "error in let - expected in "; NONE)
@@ -597,7 +604,7 @@ structure Parser =  struct
                                         end)))))
                  | SOME ts => 
                    (case parse_expr ts
-                     of NONE => (err:= "error in let - expected expr "; NONE)
+                     of NONE => (err := "error in let - expected expr \n"^(findToken T_IN ts); NONE)
                       | SOME (e1,ts) => 
                         (case expect_IN ts
                           of NONE => (err := "error in let - expected in "; NONE)
@@ -616,7 +623,7 @@ structure Parser =  struct
              of NONE => (err := "error in map - expected expr "; NONE)
              | SOME (e1,ts) =>
                 (case expect_BAR ts
-                   of NONE => (err := "error in map or filter - expected bar \nerror in interval - expected ddots"; NONE)
+                   of NONE => (err := "error in map or filter - expected bar \nerror in interval - expected ddots \nerror in list - expected expr or rparen"; NONE)
                    | SOME ts =>
                       (case expect_SYM ts
                         of NONE => (err := "error in map or filter - expected symbol "; NONE)
@@ -807,15 +814,15 @@ structure Parser =  struct
 
 
   fun parseExpr ts = 
-      (case parse_expr ts
+      (err := "unknown error"; (case parse_expr ts
         of SOME (e,[]) => e
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
-         | NONE => parseError (!err))
+         | NONE => parseError (!err)))
 
   fun parseDecl ts = 
-      (case parse_decl ts
+      (err := "unknown error"; (case parse_decl ts
         of SOME (d,[]) => d
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
-         | NONE => parseError (!err))
+         | NONE => parseError (!err)))
       
 end
