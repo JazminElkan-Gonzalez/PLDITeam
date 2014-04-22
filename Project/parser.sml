@@ -755,7 +755,7 @@ structure Parser =  struct
                                       of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_BAR ts); NONE)
                                        | SOME (e2, ts) =>
                                          (case expect_BAR ts
-                                            of NONE => (err := "error in match - expected bar \n" ^ (convertToString (!soFar)) ^ "<bar>" ((findSym ts); NONE)
+                                            of NONE => (err := "error in match - expected bar \n" ^ (convertToString (!soFar)) ^ "<bar>" ^(findSym ts); NONE)
                                              | SOME ts =>
                                                (case expect_SYM ts
                                                   of NONE => (err := "error in match - expected sym \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_DCOLON ts); NONE)
