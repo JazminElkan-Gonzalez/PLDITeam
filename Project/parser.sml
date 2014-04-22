@@ -771,6 +771,7 @@ structure Parser =  struct
   
   datatype decl = DDef of string * I.expr
                 | DExpr of I.expr
+                | DSpace
 
      
  fun parse_decl ts = let
@@ -819,7 +820,8 @@ structure Parser =  struct
          | SOME (_,_)  => parseError "leftover characters past parsed expression"
          | NONE => parseError (!err)))
 
-  fun parseDecl ts = 
+  fun parseDecl [] = DSpace
+    | parseDecl ts = 
       (err := "unknown error"; (case parse_decl ts
         of SOME (d,[]) => d
          | SOME (_,_)  => parseError "leftover characters past parsed expression"

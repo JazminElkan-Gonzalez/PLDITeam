@@ -28,7 +28,7 @@ structure InternalRepresentation = struct
            | EPrimCall2 of (value -> value -> value) * expr * expr
  	   | ERecord of (string * expr) list
 	   | EField of expr * string
-
+     
   fun stringOfExpr e = let
     fun $ ss = String.concat ss
     fun $+ ss = String.concatWith "," ss

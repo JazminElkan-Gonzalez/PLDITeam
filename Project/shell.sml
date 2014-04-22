@@ -32,6 +32,44 @@ structure Shell = struct
       end
     | stringOfValue' (I.VDelayed _) d = "<delayed>"
 
+  fun pr l = print ((String.concatWith " " l)^"\n")
+
+  fun process env str = let 
+          val ts = P.lexString str
+        in 
+          case (P.parseDecl ts)
+            of P.DDef (s,e) => let
+                val v = E.eval env e
+                val _ = pr ["Definition",s,"added to environment"]
+              in
+                ((s,v)::env)
+              end
+            | P.DSpace => env
+            | P.DExpr e => let
+                val v = E.eval env e
+                val _ = pr [stringOfValue v 10]
+              in
+                env
+              end
+        end
+
+
+            handle P.Parsing msg => (pr ["Parsing error:", msg]; env)
+          | E.Evaluation msg => (pr ["Evaluation error:", msg]; env)
+          | IO.Io _ => (pr ["I/O error"]; env)
+
+  fun test fenv file = let 
+          val ins = TextIO.openIn (file)
+          val initEnv = E.initialEnv @ fenv
+          fun loop ins env = 
+            case TextIO.inputLine ins
+              of SOME line => loop ins (process env line)
+              | NONE => env
+          val env = loop ins initEnv 
+        in
+          TextIO.closeIn ins;
+          env
+        end
 
   fun run fenv = let
     fun prompt () = (print "project> "; TextIO.inputLine (TextIO.stdIn))
@@ -43,22 +81,23 @@ structure Shell = struct
      | SOME str => eval_print fenv str)
     and eval_print fenv str = let
       fun process env str = let 
-  val ts = P.lexString str
-      in 
-  case (P.parseDecl ts)
-   of P.DDef (s,e) => let
-        val v = E.eval env e
-        val _ = pr ["Definition",s,"added to environment"]
-      in
-        ((s,v)::env)
-      end
-    | P.DExpr e => let
-        val v = E.eval env e
-        val _ = pr [stringOfValue v 10]
-      in
-        env
-      end
-      end
+          val ts = P.lexString str
+        in 
+          case (P.parseDecl ts)
+            of P.DDef (s,e) => let
+                val v = E.eval env e
+                val _ = pr ["Definition",s,"added to environment"]
+              in
+                ((s,v)::env)
+              end
+            | P.DSpace => env
+            | P.DExpr e => let
+                val v = E.eval env e
+                val _ = pr [stringOfValue v 10]
+              in
+                env
+              end
+        end
     in
       (case String.isPrefix ":parse " str
   of true => let val ts = P.lexString (String.extract (str, 6, NONE))
@@ -74,7 +113,7 @@ structure Shell = struct
              val ins = TextIO.openIn (name)
              fun loop ins env = 
            case TextIO.inputLine ins
-            of SOME line => loop ins (process env line)
+             of SOME line => loop ins (process env line)
              | NONE => env
              val env = loop ins fenv 
          in
