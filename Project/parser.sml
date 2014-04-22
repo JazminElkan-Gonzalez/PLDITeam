@@ -343,16 +343,22 @@ structure Parser =  struct
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
   fun findToken tk [] = "expected "^(stringOfToken tk)
-    | findToken tk (t::ts) = (case (expect_SYM (t::ts))
-                                of NONE => 
-                                (case (expect_INT (t::ts)) 
-                                 of NONE => 
-                                (case (expect [tk] (t::ts))
+    | findToken tk (t::ts) = (case (expect [tk] (t::ts))
                                         of NONE =>
                                          findToken tk ts
                                 | SOME ts => (convertToString (t::ts)))
-                              | SOME (i,ts)=> (convertToString (t::ts)))
-                             | SOME (i,ts)=> (convertToString (t::ts)))
+
+
+    fun findSym [] = "expected symbol"
+        | findSym (t::ts) = (case expect_SYM (t::ts)
+                        of NONE => 
+                                findSym ts
+                        | SOME (s,ts) => (convertToString (t::ts)))
+    fun findInt [] = "expected Int"
+        |findInt (t::ts) = (case expect_INT (t::ts)
+                        of NONE => 
+                                findInt ts
+                        | SOME (s,ts) => (convertToString (t::ts)))
 
 
   fun choose [] ts = NONE
@@ -513,7 +519,7 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym expr>"; NONE)
+        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym expr>" ^(findSym ts); NONE)
         | SOME (s,ts) =>
         (case parse_expr ts
           of NONE => (err := "error in field - expected expr " ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
