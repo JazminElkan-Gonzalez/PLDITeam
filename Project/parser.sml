@@ -347,8 +347,6 @@ structure Parser =  struct
                                         of NONE =>
                                          findToken tk ts
                                 | SOME ts => (convertToString (t::ts)))
-
-
     fun findSym [] = "expected symbol"
         | findSym (t::ts) = (case expect_SYM (t::ts)
                         of NONE => 
@@ -559,10 +557,10 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          (case parse_expr ts
-           of NONE => (err := "expected expr " ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_RPAREN ts); NONE)
+           of NONE => (err := "expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_RPAREN ts); NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
-                of NONE => (err := "expected rparen "; NONE)
+                of NONE => (err := "expected rparen \n" ^ (convertToString (!soFar)) ^ "<Right Paren>"; NONE)
                 | SOME ts => SOME (e,ts))))
 
   and parse_aterm_IF ts = 
@@ -570,19 +568,19 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case parse_expr ts
-           of NONE => (err := "error in if - expected expr "; NONE)
+           of NONE => (err := "error in if - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_THEN ts); NONE)
             | SOME (e1,ts) => 
               (case expect_THEN ts
-                of NONE => (err := "error in if - expected then "; NONE)
+                of NONE => (err := "error in if - expected then \n" ^ (convertToString (!soFar)) ^ "<then expr>"; NONE)
                  | SOME ts => 
                    (case parse_expr ts
-                     of NONE => (err := "error in if - expected expr "^(findToken T_ELSE ts); NONE)
+                     of NONE => (err := "error in if - expected expr \n" ^ (convertToString (!soFar)) ^ "<expr>" ^ (findToken T_ELSE ts); NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
-                          of NONE => (err := "error in if - expected else "; NONE)
+                          of NONE => (err := "error in if - expected else \n" ^ (convertToString (!soFar)) ^ "<else expr>"; NONE)
                            | SOME ts => 
                              (case parse_expr ts
-                               of NONE => (err := "error in if - expected expr "; NONE)
+                               of NONE => (err := "error in if - expected expr " ^ (convertToString (!soFar)) ^ "<expr>"; NONE)
                                 | SOME (e3,ts) => SOME (I.EIf (e1,e2,e3),ts)))))))
 
   and parse_aterm_LET ts = 
