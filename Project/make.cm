@@ -11,3 +11,5 @@ group is
   representation.sml
   evaluator.sml
   shell.sml
+  test2.sml
+  
