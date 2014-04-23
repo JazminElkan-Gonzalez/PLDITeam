@@ -364,16 +364,16 @@ structure Parser =  struct
     fun exprString ts = "<expr>"
 
 
-   fun makeError funName errorName beforeTokens (token searchToken) ts= err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> " ^ (findToken searchToken ts)
-      | makeError funName errorName beforeTokens [] []= err := "error in " ^ funName  ^ "- expected " ^ errorName ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> "
-      | makeError funName errorName beforeTokens sToken ts= if sToken = "sym" then
+   fun makeError funName errorName beforeTokens [searchToken:token] []         ts = (err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> " ^ (findToken searchToken ts); soFar := lexString "")
+     | makeError funName errorName beforeTokens []                  []         [] = (err := "error in " ^ funName  ^ "- expected " ^ errorName ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "> " ; soFar := lexString "")
+     | makeError funName errorName beforeTokens []                  [sToken]   ts = (if sToken = "sym" then
         err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (findSym ts)
         else if sToken = "int" then
         err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (findInt ts)
         else if sToken = "expr" then
         err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n" ^ (convertToString beforeTokens) ^ " <" ^ errorName ^ "< " ^ (exprString ts)
-        else print "YOU ARE JUST WRONG"
-      | makeError _ _ _ _ _ = err := "huh?"
+        else print "YOU ARE JUST WRONG"; soFar := lexString "")
+      | makeError _ _ _ _ _ _= (err := "huh?" ; soFar := lexString "")
 
 
   fun choose [] ts = NONE
@@ -457,11 +457,11 @@ structure Parser =  struct
 		  of NONE => SOME (e1,ts)
 		   | SOME ts => 
 		     ((savedSoFar := !savedSoFar@(!soFar));(case parse_term ts
-		       of NONE => (err := "expected second term"^ (convertToString (!savedSoFar)) ^ "<term>"; NONE)
+		       of NONE => ((makeError "math" "term" (!savedSoFar) [] [] [] ); NONE)
 			| SOME (e2,ts) => SOME (call2 "sub" e1 e2, ts))))
 	      | SOME ts => 
 		((savedSoFar := !savedSoFar@(!soFar));(case parse_term ts
-		  of NONE => (err := "expected second term"^ (convertToString (!savedSoFar)) ^ "<term>"; NONE)
+		  of NONE => ((makeError "math" "term" (!savedSoFar) [] [] [] ); NONE)
 		   | SOME (e2,ts) => SOME (call2 "add" e1 e2, ts)))))
 
 
@@ -519,12 +519,12 @@ structure Parser =  struct
     (case expect_LBRACE ts
       of NONE => NONE
       | SOME ts => 
-      (case parse_fields ts
-        of NONE => (err := "error in record - expected field"  ; NONE)
+      ((savedSoFar := !savedSoFar@(!soFar));(case parse_fields ts
+        of NONE => ((makeError "record" "fields" (!savedSoFar) [T_RBRACE] [] ts )  ; NONE)
         | SOME (recordList, ts) =>
         (case expect_RBRACE ts
-          of NONE => (err := "error in record - expected rbrace "; NONE)
-          | SOME ts => SOME (I.ERecord recordList, ts))))
+          of NONE => ((makeError "record" "right brace" (!soFar) [] [] [] ); NONE)
+          | SOME ts => SOME (I.ERecord recordList, ts)))))
 
 (* Question 3c *)
   and parse_aterm_FIELD ts =
@@ -532,10 +532,10 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => (err := "error in field - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (exprString ts); NONE)
+        of NONE => ((makeError "field" "sym" (!soFar) [] ["expr"] ts ) ; NONE)
         | SOME (s,ts) =>
         ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-          of NONE => (err := "error in field - expected expr " ^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+          of NONE => ((makeError "field" "expr" (!savedSoFar) [] [] [] ) ; NONE)
           | SOME (e,ts) => SOME (I.EField (e,s) , ts)))))
 
   and parse_aterm_TRUE ts = 
@@ -558,13 +558,13 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
 	 (case expect_SYM ts
-	   of NONE => (err := "error in function - expected symbol \n"^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_RARROW ts); NONE)
+	   of NONE => ((makeError "function" "sym" (!soFar) [T_RARROW] [] ts ); NONE)
 	    | SOME (s,ts) => 
 	      (case expect_RARROW ts
-		of NONE => (err := "error in function - expected rarrow \n"^ (convertToString (!soFar)) ^ "<Right Arrow>" ^ (exprString ts); NONE)
+		of NONE => ((makeError "function" "right arrow" (!soFar) [] ["expr"] ts ) ; NONE)
 		 | SOME ts => 
 		   ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-		     of NONE => (err := "error in function - expected expr \n"^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+		     of NONE => ((makeError "function" "expr" (!savedSoFar) [] [] [] ) ; NONE)
 		      | SOME (e,ts) => SOME (I.EFun (s,e), ts))))))
 
   and parse_aterm_PARENS ts = 
@@ -572,10 +572,10 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-           of NONE => (err := "expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_RPAREN ts); NONE)
+           of NONE => ((makeError "parentheses" "expr" (!savedSoFar) [T_RPAREN] [] ts ) ; NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
-                of NONE => (err := "expected rparen \n" ^ (convertToString (!soFar)) ^ "<Right Paren>"; NONE)
+                of NONE => ((makeError "parentheses" "right parentheses" (!soFar) [] [] [] ) ; NONE)
                 | SOME ts => SOME (e,ts)))))
 
   and parse_aterm_IF ts = 
@@ -583,19 +583,19 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-           of NONE => (err := "error in if - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_THEN ts); NONE)
+           of NONE => ((makeError "if" "expr" (!savedSoFar) [T_THEN] [] ts ) ; NONE)
             | SOME (e1,ts) => 
               (case expect_THEN ts
-                of NONE => (err := "error in if - expected then \n" ^ (convertToString (!soFar)) ^ "<then>" ^ (exprString ts); NONE)
+                of NONE => ((makeError "if" "then" (!soFar) [] ["expr"] ts ) ; NONE)
                  | SOME ts => 
                    ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                     of NONE => (err := "error in if - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_ELSE ts); NONE)
+                     of NONE => ((makeError "if" "expr" (!savedSoFar) [T_ELSE] [] ts ) ; NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
-                          of NONE => (err := "error in if - expected else \n" ^ (convertToString (!soFar)) ^ "<else>" ^ (exprString ts); NONE)
+                          of NONE => ((makeError "if" "else" (!soFar) [] ["expr"] ts ) ; NONE)
                            | SOME ts => 
                              ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                               of NONE => (err := "error in if - expected expr " ^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+                               of NONE => ((makeError "if" "expr" (!savedSoFar) [] [] [] ); NONE)
                                 | SOME (e3,ts) => SOME (I.EIf (e1,e2,e3),ts))))))))))
 
   and parse_aterm_LET ts = 
@@ -603,24 +603,24 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts 
-           of NONE => (err := "error in let - expected symbol \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_EQUAL ts) ; NONE)
+           of NONE => ((makeError "let" "sym" (!soFar) [T_EQUAL] [] ts ); NONE)
             | SOME (s,ts) => 
               (case expect_EQUAL ts
                 of NONE => (case parse_symList ts
-                        of NONE => (err := "error in let - expected equal or symbol \n"^ (convertToString (!soFar)) ^ "<decl>" ^(findToken T_IN ts); NONE)
-                        | SOME (nil,ts) => (err := "error in let - expected symbol list"^ (convertToString (!soFar)) ^ "<sym list>" ^ (findToken T_EQUAL ts); NONE)
+                        of NONE => ((makeError "let" "decl" (!soFar) [T_IN] [] ts ); NONE)
+                        | SOME (nil,ts) => ((makeError "let" "sym List" (!soFar) [T_EQUAL] [] ts ); NONE)
                  | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
-                     of NONE => (err := "error in let - expected equal "^ (convertToString (!soFar)) ^ "<=>" ^ (exprString ts); NONE)
+                     of NONE => ((makeError "let" "equal" (!soFar) [] ["expr"] ts ); NONE)
                       | SOME ts => 
                         ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                          of NONE => (err := "error in let - expected expr \n"^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_IN ts) ; NONE)
+                          of NONE => ((makeError "let" "expr" (!savedSoFar) [T_IN] [] ts ); NONE)
                            | SOME (e1,ts) => 
                              (case expect_IN ts
-                               of NONE => (err := "error in let - expected in \n" ^ (convertToString (!soFar)) ^ "<in>" ^ (exprString ts); NONE)
+                               of NONE => ((makeError "let" "in" (!soFar) [] ["expr"] ts ); NONE)
                                 | SOME ts => 
                                   ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                                    of NONE => (err := "error in let - expected expr " ^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+                                    of NONE => ((makeError "let" "expr" (!savedSoFar) [] [] [] ); NONE)
                                     | SOME (e2,ts) => let 
                                         fun paramFun (paramS::nil) = I.EFun (paramS,e1)
                                           | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
@@ -630,13 +630,13 @@ structure Parser =  struct
                                         end)))))))
                  | SOME ts => 
                    ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                     of NONE => (err := "error in let - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_IN ts); NONE)
+                     of NONE => ((makeError "let" "expr" (!savedSoFar) [T_IN] [] ts ); NONE)
                       | SOME (e1,ts) => 
                         (case expect_IN ts
-                          of NONE => (err := "error in let - expected in \n"  ^ (convertToString (!soFar)) ^ "<in>" ^ (exprString ts); NONE)
+                          of NONE => ((makeError "let" "in" (!soFar) [] ["expr"] ts ) ; NONE)
                            | SOME ts => 
                              ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                               of NONE => (err := "error in let - expected expr \n"  ^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+                               of NONE => ((makeError "let" "expr" (!savedSoFar) [] [] [] ) ; NONE)
                                 | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))))
 
 
@@ -646,22 +646,22 @@ structure Parser =  struct
         of NONE => NONE
         | SOME ts => 
           ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-             of NONE => (err := "error in map - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_BAR ts); NONE)
+             of NONE => ((makeError "map" "expr" (!savedSoFar) [T_BAR] [] ts ) ; NONE)
              | SOME (e1,ts) =>
                 (case expect_BAR ts
                    of NONE => (err := "error in map or filter - expected bar \nerror in interval - expected ddots \nerror in list - expected expr or rparen"; NONE)
                    | SOME ts =>
                       (case expect_SYM ts
-                        of NONE => (err := "error in map or filter - expected symbol \n"  ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_LARROW ts); NONE)
+                        of NONE => ((makeError "map" "sym" (!soFar) [T_LARROW] [] ts ) ; NONE)
                         | SOME (s,ts) =>
                           (case expect_LARROW ts
-                            of NONE => (err := "error in map or filter - expected larrow " ^ (convertToString (!soFar)) ^ "<left arrow>" ^ (exprString ts); NONE)
+                            of NONE => ((makeError "map" "left arrow" (!soFar) [] ["expr"] ts ) ; NONE)
                             | SOME ts =>
                                ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts 
-                                  of NONE => (err := "error in map or filter - expected expr " ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_RBRACKET ts); NONE)
+                                  of NONE => ((makeError "map" "expr" (!savedSoFar) [T_RBRACKET] [] ts ) ; NONE)
                                   | SOME (e2,ts) =>
                                     (case expect_RBRACKET ts
-                                       of NONE => (err := "error in map - expected rbracket"  ^ (convertToString (!soFar)) ^ "<Right Bracket>"; NONE)
+                                       of NONE => ((makeError "map" "right bracket" (!soFar) [] [] [] ) ; NONE)
                                        | SOME ts => SOME ((call2 "map" (I.EFun(s,e1)) e2),ts))))))))))
 (* Question 2j *) 
   and parse_aterm_FILTER ts =
@@ -684,13 +684,13 @@ structure Parser =  struct
                                 of NONE => NONE
                                 | SOME (e2,ts) =>
                                   (case expect_COMMA ts
-                                     of NONE => (err := "error in map - expected rbracket \nerror in filter - expected comma \n" ^ (convertToString (!soFar)) ^ "<comma>" ^ (exprString ts); NONE)
+                                     of NONE => ((makeError "filter" "comma" (!soFar) [] ["expr"] ts ); NONE)
                                      | SOME ts => 
                                        ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                                          of NONE => (err := "error in filter - expected expr  \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_RBRACKET ts); NONE)
+                                          of NONE => ((makeError "filter" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
                                           | SOME (e3,ts) =>
                                             (case expect_RBRACKET ts 
-                                               of NONE => (err := "error in filter - expected rbracket  \n" ^ (convertToString (!soFar)) ^ "<right bracket>"; NONE)
+                                               of NONE => ((makeError "filter" "right bracket" (!soFar) [] [] [] ); NONE)
                                                | SOME ts => let
                                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                                             in
@@ -736,13 +736,13 @@ structure Parser =  struct
             of NONE => NONE
              | SOME (e1, ts) =>
                (case expect_DDOTS ts
-                 of NONE => (err := "error in interval - expected ddots \n" ^ (convertToString (!soFar)) ^ "<ddots expr>" ^ (exprString ts); NONE)
+                 of NONE => ((makeError "interval" "double dots" (!soFar) [] ["expr"] ts ); NONE)
                   | SOME ts =>
                     ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                      of NONE => (err := "error in interval - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_RBRACKET ts); NONE)
+                      of NONE => ((makeError "interval" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
                       | SOME (e2, ts) => 
                         (case expect_RBRACKET ts
-                          of NONE => (err := "error in interval - expected rbracket \n" ^ (convertToString (!soFar)) ^ "<rbracket>"; NONE)
+                          of NONE => ((makeError "interval" "right bracket" (!soFar) [] [] [] ); NONE)
                            | SOME ts => SOME (call2 "interval" e1 e2, ts)))))))
 
   (*Question 2d*)
@@ -751,40 +751,40 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts =>
          ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-            of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_WITH ts); NONE)
+            of NONE => ((makeError "match" "expr" (!savedSoFar) [T_WITH] [] ts ); NONE)
              | SOME (e1,ts) =>
                (case expect_WITH ts
-                of NONE => (err := "error in match - expected with \n" ^ (convertToString (!soFar)) ^ "<with>" ^ (findToken T_LBRACKET ts); NONE)
+                of NONE => ((makeError "match" "with" (!soFar) [T_LBRACKET] [] ts ); NONE)
                  | SOME ts =>
                    (case expect_LBRACKET ts
-                      of NONE => (err := "error in match - expected lbracket \n" ^ (convertToString (!soFar)) ^ "<lbracket>" ^ (findToken T_RBRACKET ts); NONE)
+                      of NONE => ((makeError "match" "left bracket" (!soFar) [T_RBRACKET] [] ts ); NONE)
                        | SOME ts =>
                          (case expect_RBRACKET ts
-                            of NONE => (err := "error in match - expected rbracket \n" ^ (convertToString (!soFar)) ^ "<rbracket>" ^ (findToken T_RARROW ts); NONE)
+                            of NONE => ((makeError "match" "right bracket" (!soFar) [T_RARROW] [] ts ); NONE)
                              | SOME ts =>
                                (case expect_RARROW ts
-                                  of NONE => (err := "error in match - expected rarrow \n" ^ (convertToString (!soFar)) ^ "<rarrow>"^ (exprString ts); NONE)
+                                  of NONE => ((makeError "match" "right arrow" (!soFar) [] ["expr"] ts ); NONE)
                                    | SOME ts =>
                                      ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                                      of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>" ^ (findToken T_BAR ts); NONE)
+                                      of NONE => ((makeError "match" "expr" (!savedSoFar) [T_BAR] [] ts ); NONE)
                                        | SOME (e2, ts) =>
                                          (case expect_BAR ts
-                                            of NONE => (err := "error in match - expected bar \n" ^ (convertToString (!soFar)) ^ "<bar>" ^(findSym ts); NONE)
+                                            of NONE => ((makeError "match" "bar" (!soFar) [] ["sym"] ts ); NONE)
                                              | SOME ts =>
                                                (case expect_SYM ts
-                                                  of NONE => (err := "error in match - expected sym \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_DCOLON ts); NONE)
+                                                  of NONE => ((makeError "match" "sym" (!soFar) [T_DCOLON] [] ts ); NONE)
                                                    | SOME (sym1,ts) =>
                                                      (case expect_DCOLON ts
-                                                        of NONE => (err := "error in match - expected dcolon \n" ^ (convertToString (!soFar)) ^ "<dcolon>" ^ (findSym ts); NONE)
+                                                        of NONE => ((makeError "match" "double colon" (!soFar) [] ["sym"] ts ); NONE)
                                                          | SOME ts =>
                                                            (case expect_SYM ts
-                                                              of NONE => (err := "error in match - expected sym \n" ^ (convertToString (!soFar)) ^ "<sym>" ^ (findToken T_RARROW ts); NONE)
+                                                              of NONE => ((makeError "match" "sym" (!soFar) [T_RARROW] [] ts ); NONE)
                                                                | SOME (sym2,ts) =>
                                                                  (case expect_RARROW ts
-                                                                    of NONE => (err := "error in match - expected rarrow \n" ^ (convertToString (!soFar)) ^ "<rarrow>"^ (exprString ts); NONE)
+                                                                    of NONE => ((makeError "match" "right arrow" (!soFar) [] ["expr"] ts ); NONE)
                                                                      | SOME ts =>
                                                                        ((savedSoFar := !savedSoFar@(!soFar));(case parse_expr ts
-                                                                          of NONE => (err := "error in match - expected expr \n" ^ (convertToString (!savedSoFar)) ^ "<expr>"; NONE)
+                                                                          of NONE => ((makeError "match" "expr" (!soFar) [] [] [] ); NONE)
                                                                            | SOME (e3, ts) =>
 
                                                                            let
