@@ -348,17 +348,17 @@ structure Parser =  struct
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
-  fun findToken tk [] = "expected "^(stringOfToken tk)
+  fun findToken tk [] = " expected "^  "'" ^(stringOfTokenEnglish tk) ^ "'"
     | findToken tk (t::ts) = (case (expect [tk] (t::ts))
                                         of NONE =>
                                          findToken tk ts
                                 | SOME ts => (convertToString (t::ts)))
-    fun findSym [] = "expected symbol"
+    fun findSym [] = " expected symbol"
         | findSym (t::ts) = (case expect_SYM (t::ts)
                         of NONE => 
                                 findSym ts
                         | SOME (s,ts) => (convertToString (t::ts)))
-    fun findInt [] = "expected Int"
+    fun findInt [] = " expected Int"
         |findInt (t::ts) = (case expect_INT (t::ts)
                         of NONE => 
                                 findInt ts
