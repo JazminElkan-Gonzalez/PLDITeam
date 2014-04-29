@@ -666,46 +666,46 @@ structure Parser =  struct
         (case parse_expr_list ts
           of NONE => 
             (case expect_RBRACKET ts
-              of NONE => NONE
+              of NONE => ((makeError "list" "right bracket" [(!soFar)] [] [] [] ) ; NONE)
               | SOME ts => SOME (I.EVal (I.VList []), ts))
           | SOME (es, ts) =>
             (case expect_RBRACKET ts
               of NONE => (case expect_DDOTS ts
                 of NONE => (case expect_BAR ts
-                  of NONE => NONE
+                  of NONE => ((makeError "map or filter" "bar" [(!soFar)] [] ["sym"] ts ) ; NONE)
                   | SOME ts =>
                     (case expect_SYM ts
-                      of NONE => NONE
+                      of NONE => ((makeError "map or filter" "sym" [(!soFar)] [T_LARROW] [] ts ) ; NONE)
                       | SOME (s,ts) =>
                         (case expect_LARROW ts
-                          of NONE => NONE
+                          of NONE => ((makeError "map or filter" "Left Arrow" [(!soFar)] [] ["expr"] ts ) ; NONE)
                           | SOME ts =>
-                            (case parse_expr ts
-                              of NONE => NONE
+                            ((updateSaved (!soFar) "<expr>");(case parse_expr ts
+                              of NONE => ((makeError "map or filter" "sym" (!savedSoFar) [T_LARROW] [] ts ) ; NONE)
                               | SOME (e2, ts) =>
                                 (case expect_RBRACKET ts
                                   of NONE =>
                                     (case expect_COMMA ts
-                                      of NONE => NONE
+                                      of NONE => ((makeError "map or filter" "right bracket or comma" [(!soFar)] [] ["expr"] ts ) ; NONE)
                                       | SOME ts =>
-                                        (case parse_expr ts
-                                          of NONE => NONE
+                                        ((updateSaved (!soFar) "<expr>");(case parse_expr ts
+                                          of NONE => ((makeError "filter" "expr" (!savedSoFar) [T_RBRACKET] [] ts ) ; NONE)
                                           | SOME (e3, ts) =>
                                             (case expect_RBRACKET ts
-                                              of NONE => NONE
+                                              of NONE => ((makeError "filter" "right bracket" [(!soFar)] [] [] [] ) ; NONE)
                                               | SOME ts => let
                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                               in
                                                 SOME (call2 "map" (I.EFun(s, (call1 "hd" es))) x, ts)
-                                              end)))
-                                  | SOME ts => SOME ((call2 "map" (I.EFun(s, (call1 "hd" es))) e2), ts))))))
+                                              end))))
+                                  | SOME ts => SOME ((call2 "map" (I.EFun(s, (call1 "hd" es))) e2), ts)))))))
                 | SOME ts =>
-                  (case parse_expr ts
-                    of NONE => NONE
+                  ((updateSaved (!soFar) "<expr>");(case parse_expr ts
+                    of NONE => ((makeError "interval" "expr" (!savedSoFar) [T_RBRACKET] [] ts ) ; NONE)
                     | SOME (e2, ts) =>
                       (case expect_RBRACKET ts
-                        of NONE => NONE
-                        | SOME ts => SOME (call2 "interval" (call1 "hd" es) e2, ts))))
+                        of NONE => ((makeError "interval" "right bracket" [(!soFar)] [] [] [] ); NONE)
+                        | SOME ts => SOME (call2 "interval" (call1 "hd" es) e2, ts)))))
               | SOME ts => SOME (es, ts))))
   
   and parse_aterm_list ts = 
