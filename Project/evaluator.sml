@@ -185,8 +185,8 @@ fun checkType (I.VCons k) = "cons"
           | initMap' (I.VClosure (n,e,env)) I.VNil = I.VNil
           | initMap' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
                                                            fun forcer value  = if (checkType value) = "delay"
-                                                                   then (print (checkType (force value));print " forced map \n";(force value))
-                                                                        else (print (checkType value);print "not forced map\n";value)
+                                                                   then (force value)
+                                                                        else value
                                                            val first = (forcer x)
                                                            val tail = (forcer xs)
                                                            val entryVal = (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
@@ -199,8 +199,7 @@ fun checkType (I.VCons k) = "cons"
                                                          end
           | initMap' _ _ = evalError "Error at map - input is not a mapping function"
         in
-          (print "why are we here"
-          ;initMap' (force v1) (force v2))
+          initMap' (force v1) (force v2)
         end
 
 
@@ -209,8 +208,8 @@ fun initFilter v1 v2 = let
       | initFilter' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
       | initFilter' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
                                                                 fun forcer value  = if (checkType value) = "delay"
-                                                                        then (print (checkType (force value));print " forced \n";(force value))
-                                                                        else (print (checkType value);print "not forced\n";value)
+                                                                        then (force value)
+                                                                        else value
                                                                 val first = (forcer x)
                                                                 val tail =  (forcer xs) 
                                                                 val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal first))) (I.VBool true))
@@ -219,8 +218,8 @@ fun initFilter v1 v2 = let
                                                               in
 
                                                                 if (checkEq xApp)
-                                                                  then (print "then \n";I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail)))
-                                                                else (print "else \n"; initFilter' (I.VClosure (n,e,env)) tail)
+                                                                  then I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail))
+                                                                else initFilter' (I.VClosure (n,e,env)) tail
                                                               end
       | initFilter' _ _ =  evalError "initFilter"
     in 

@@ -667,7 +667,7 @@ structure Parser =  struct
           of NONE => 
             (case expect_RBRACKET ts
               of NONE => ((makeError "list" "right bracket" [(!soFar)] [] [] [] ) ; NONE)
-              | SOME ts => SOME (I.EVal (I.VList []), ts))
+              | SOME ts => SOME (I.EVal (I.VNil), ts))
           | SOME (es, ts) =>
             (case expect_RBRACKET ts
               of NONE => (case expect_DDOTS ts
