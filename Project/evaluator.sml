@@ -167,10 +167,6 @@ fun checkType (I.VCons k) = "cons"
   end
 
 
-  (* 
-   *   Initial environment (already in a form suitable for the environment)
-   *)
-
   fun initMap v1 v2 = let 
         fun initMap' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
           | initMap' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
@@ -250,7 +246,7 @@ fun initFilter v1 v2 = let
                                                  I.EIdent "a",
                                                  I.EIdent "b")),
                            [])),
-       ("nil", I.VList []),
+       ("nil", I.VNil),
        ("map", I.VClosure ("f", I.EFun("xs",
                                   I.EPrimCall2 (initMap,
                                                 I.EIdent "f",
