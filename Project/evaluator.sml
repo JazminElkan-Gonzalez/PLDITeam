@@ -161,16 +161,20 @@ structure Evaluator = struct
    *   Initial environment (already in a form suitable for the environment)
    *)
 
-  fun initMap (I.VClosure (n,e,env)) (I.VList []) = I.VList []
-    | initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
-    | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
-                                                           val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
-                                                           fun mapL (I.VList xs) = xs
+  fun initMap v1 v2 = let 
+        fun initMap' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
+          | initMap' (I.VClosure (n,e,env)) (I.VCons (x,I.VNil)) = I.VCons ((eval env (I.EApp (I.EFun (n,e),I.EVal x))),I.VNil)
+          | initMap' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
+                                                           val vMap = (initMap (I.VClosure (n,e,env)) (I.VCons (xs,I.VNil)))
+                                                           fun mapL (I.VCons (xs,I.VNil)) = xs
                                                              | mapL _ = evalError "Error at map - input is not a list"
                                                          in
-                                                            I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
+                                                            I.VCons ((eval env (I.EApp (I.EFun (n,e),I.EVal x))),(mapL vMap))
                                                          end
-    | initMap _ _ = evalError "Error at map - input is not a mapping function"
+          | initMap' _ _ = evalError "Error at map - input is not a mapping function"
+        in
+          initMap' (force v1) (force v2)
+        end
 
   fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
     | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
