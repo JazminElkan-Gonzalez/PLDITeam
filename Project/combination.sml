@@ -3,6 +3,8 @@
 (* List: LBRACKET, expr_list, RBRACKET, RBRACKET *)
 (* Interval: LBRACKET, expr, DDOTS, expr, RBRACKET*)
 
+
+  and parse_aterm_COMBINED ts = 
     (case expect_LBRACKET ts
         of NONE => NONE
         | SOME ts =>
@@ -39,15 +41,15 @@
                                                                       val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                                                   in
                                                                       SOME (call2 "map" (I.EFun(s,e1)) x,ts)
-                                                                  end))))))))
+                                                                  end))))))))))
 
-                            | SOME ts =>
-                              ((updateSaved (!soFar) "<expr>");(case parse_expr ts
-                                of NONE => ((makeError "interval" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
-                                | SOME (e2, ts) => 
-                                  (case expect_RBRACKET ts
-                                    of NONE => ((makeError "interval" "right bracket" [(!soFar)] [] [] [] ); NONE)
-                                     | SOME ts => SOME (call2 "interval" e1 e2, ts)))))
+                          | SOME ts =>
+                            ((updateSaved (!soFar) "<expr>");(case parse_expr ts
+                              of NONE => ((makeError "interval" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
+                              | SOME (e2, ts) => 
+                                (case expect_RBRACKET ts
+                                  of NONE => ((makeError "interval" "right bracket" [(!soFar)] [] [] [] ); NONE)
+                                   | SOME ts => SOME (call2 "interval" e1 e2, ts))))
            | SOME ts =>
              (case parse_expr_list ts
                of NONE =>  
@@ -57,4 +59,4 @@
                 | SOME (es, ts) =>
                   (case expect_RBRACKET ts
                     of NONE => NONE
-                     | SOME ts => SOME (es, ts)))))))))
+                     | SOME ts => SOME (es, ts)))))
