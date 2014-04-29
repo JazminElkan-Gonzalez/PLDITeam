@@ -374,15 +374,18 @@ structure Parser =  struct
 
    fun makeErrorLast [] [] = (soFar := lexString ""; bulkerr := lexString "";" ")
      | makeErrorLast (ts::tss) (e::es) = ((convertToString ts) ^ e ^ "\n" ^ (makeErrorLast tss es))
-     | makeErrorLast _ _ = "huh?"
+     | makeErrorLast _ (e::es) = ""
+     | makeErrorLast _ _ = ""
 
    fun makeErrorToken [] [] token rest = (soFar := lexString ""; bulkerr := lexString ""; " ")
      | makeErrorToken (ts::tss) (e::es) token  rest= ((convertToString ts) ^ e ^ (findToken token rest) ^ "\n" ^ (makeErrorToken tss es token rest))
-     | makeErrorToken _ _ _ _ = "huh?"
+     | makeErrorToken _ (e::es) _ _ =  ""
+     | makeErrorToken _ _ _ _ =  "huh?"
 
    fun makeErrorOther [] [] rest = (soFar := lexString ""; bulkerr := lexString ""; " ")
      | makeErrorOther (ts::tss) (e::es) rest = ((convertToString ts) ^ e ^ rest ^ "\n" ^ (makeErrorOther tss es rest))
-     | makeErrorOther _ _ _ = "huh?"
+     | makeErrorOther _ (e::es) _ =  ""
+     | makeErrorOther _ _ _ =  "huh?"
 
    fun makeError funName errorName beforeTokens [token] [] ts = (checkEType errorName; err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorToken beforeTokens (!stringVal) token ts))
      | makeError funName errorName beforeTokens []                  []         [] = (checkEType errorName;(err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorLast beforeTokens (!stringVal))))
@@ -463,9 +466,9 @@ structure Parser =  struct
 	   (case expect_DCOLON ts
 	     of NONE => SOME (e1,ts)
 	      | SOME ts => 
-		(case parse_cterm ts
-		  of NONE => NONE
-		   | SOME (e2,ts) => SOME (call2 "cons" e1 e2, ts))))
+		((updateSaved (!soFar) "<term>");(case parse_cterm ts
+		  of NONE => ((makeError "Append List" "C term" (!savedSoFar) [] [] [] ); NONE)
+		   | SOME (e2,ts) => SOME (call2 "cons" e1 e2, ts)))))
 
 
   and parse_cterm ts = 
@@ -770,7 +773,7 @@ structure Parser =  struct
                                                                              val s1 =  (call1 "hd" e1)
                                                                              val s2 =  (call1 "tl" e1)
                                                                             in
-                                                                              SOME (I.EIf ( (call2 "equal" e1 (I.EVal (I.VList []))) , e2 , I.ELet( sym1, s1 , I.ELet(sym2, s2, e3))), ts)
+                                                                              SOME (I.EIf ( (call2 "equal" e1 (I.EVal (I.VNil))) , e2 , I.ELet( sym1, s1 , I.ELet(sym2, s2, e3))), ts)
                                                                             end
 
                                                                            ))))))))))))))))

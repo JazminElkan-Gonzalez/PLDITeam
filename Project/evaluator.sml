@@ -150,26 +150,28 @@ fun checkType (I.VCons k) = "cons"
   end
 
 
-  fun primEqHelper (I.VList []) (I.VList []) = true
-     | primEqHelper (I.VList (x::xs)) (I.VList []) = false
-     | primEqHelper (I.VList []) (I.VList (x::xs)) = false
-     | primEqHelper (I.VList (x::xs)) (I.VList (y::ys)) = 
+  fun primEqHelper (I.VList []) (I.VList []) =  true
+     | primEqHelper I.VNil I.VNil = true
+     | primEqHelper (I.VCons (x,xs)) (I.VNil) = false
+     | primEqHelper (I.VNil) (I.VCons (x,xs)) = false
+     | primEqHelper (I.VCons(x,xs)) (I.VCons (y,ys)) = 
     (case (primEq x y) 
         of (I.VBool false) => false 
-        | (I.VBool true) => (primEqHelper (I.VList xs) (I.VList ys))
+        | (I.VBool true) => (primEqHelper xs ys)
         | _ => evalError "This error should not happen. Start over")
      | primEqHelper _ _ = evalError "You are comparing apples to tofu"
+
 
   and primEq v1 v2 = let
     fun primEq' (I.VInt a) (I.VInt b) = I.VBool (a=b)
       | primEq' (I.VBool a) (I.VBool b) = I.VBool (a=b)
       | primEq' (I.VNil) (I.VNil) = I.VBool true
-      | primEq' (I.VList (xs)) (I.VList (ys)) = I.VBool (primEqHelper (I.VList xs) (I.VList ys)) 
-      | primEq' _ _ = I.VBool false
+      | primEq' (I.VList []) (I.VList []) = I.VBool true
+      | primEq' (I.VCons xs) (I.VCons ys) = I.VBool (primEqHelper (I.VCons xs) (I.VCons ys))
+      | primEq' xs ys = I.VBool false
   in
     primEq' (force v1) (force v2)
   end
-    
     
   fun primLess v1 v2 = let
     fun primLess' (I.VInt a) (I.VInt b) = I.VBool (a<b)
