@@ -89,7 +89,19 @@ fun checkType (I.VCons k) = "cons"
    *   Primitive operations
    *)
 
-  fun primCons v1 v2 = I.VCons (v1,v2)
+  fun primCons v1 v2 = 
+        let 
+            fun primCons' v1 v2 =
+                                 (if checkType v2 = "list"
+                                        then (I.VCons (v1,v2))
+                                        else (if checkType v2 = "cons" 
+                                                then (I.VCons (v1,v2)) 
+                                                else (if  checkType v2 = "nil"
+                                                then   (I.VCons (v1,v2))
+                                                else I.VCons (v1, (I.VCons (v2,I.VNil))))))
+        in
+            primCons' (force v1) (force v2)
+        end
     
   fun primHd v1 = let
     fun primHd' (I.VCons (v1,v2)) = v1
