@@ -678,15 +678,15 @@ structure Parser =  struct
                       of NONE => ((makeError "map or filter" "sym" [(!soFar)] [T_LARROW] [] ts ) ; NONE)
                       | SOME (s,ts) =>
                         (case expect_LARROW ts
-                          of NONE => ((makeError "map or filter" "Left Arrow" [(!soFar)] [] ["expr"] ts ) ; NONE)
+                          of NONE => ((makeError "map or filter" "left arrow" [(!soFar)] [] ["expr"] ts ) ; NONE)
                           | SOME ts =>
                             ((updateSaved (!soFar) "<expr>");(case parse_expr ts
-                              of NONE => ((makeError "map or filter" "sym" (!savedSoFar) [T_LARROW] [] ts ) ; NONE)
+                              of NONE => ((makeError "map or filter" "expr" (!savedSoFar) [T_RBRACKET] [] ts ) ; NONE)
                               | SOME (e2, ts) =>
                                 (case expect_RBRACKET ts
                                   of NONE =>
                                     (case expect_COMMA ts
-                                      of NONE => ((makeError "map or filter" "right bracket or comma" [(!soFar)] [] ["expr"] ts ) ; NONE)
+                                      of NONE => ((makeError "map or filter" "right bracket or comma" [(!soFar)] [] [] ts) ; NONE)
                                       | SOME ts =>
                                         ((updateSaved (!soFar) "<expr>");(case parse_expr ts
                                           of NONE => ((makeError "filter" "expr" (!savedSoFar) [T_RBRACKET] [] ts ) ; NONE)
