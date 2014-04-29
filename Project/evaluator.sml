@@ -118,7 +118,7 @@ fun checkType (I.VCons k) = "cons"
 
   fun primPlus v1 v2 = let
     fun primPlus' (I.VInt a) (I.VInt b) = I.VInt (a+b)
-      | primPlus' _ _ = evalError "Addition is not possible"
+      | primPlus' _ b = (print (checkType b); evalError "Addition is not possible")
   in
     primPlus' (force v1) (force v2)
   end
@@ -173,26 +173,25 @@ fun checkType (I.VCons k) = "cons"
 
   fun initMap v1 v2 = let 
         fun initMap' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
-          | initMap' (I.VClosure (n,e,env)) (I.VCons (x,I.VNil)) = I.VCons ((eval env (I.EApp (I.EFun (n,e),I.EVal x))),I.VNil)
+          | initMap' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
           | initMap' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
-                                                           val vMap = (initMap (I.VClosure (n,e,env)) (I.VCons (xs,I.VNil)))
-                                                           fun mapL (I.VCons (xs,I.VNil)) = xs
-                                                             | mapL _ = evalError "Error at map - input is not a list"
+                                                           fun forcer value  = if (checkType value) = "delay"
+                                                                   then (force value)
+                                                                   else value
+                                                           val first = (forcer x)
+                                                           val tail = (forcer xs)
+                                                           val entryVal = (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
                                                          in
-                                                            I.VCons ((eval env (I.EApp (I.EFun (n,e),I.EVal x))),(mapL vMap))
+                                                            if (checkType tail) = "nil" 
+                                                            then 
+                                                               (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
+                                                            else     
+                                                                I.VCons (entryVal,(initMap' (I.VClosure (n,e,env)) tail))
                                                          end
           | initMap' _ _ = evalError "Error at map - input is not a mapping function"
         in
           initMap' (force v1) (force v2)
         end
-
-fun primHd2 (I.VCons (v1,v2)) = v1
-      | primHd2 v2 = v2
-
-
-    fun primTl2 (I.VCons (v1,v2)) = v2
-      | primTl2 _ = evalError "not a list tails"
-
 
 
 fun initFilter v1 v2 = let
@@ -200,18 +199,18 @@ fun initFilter v1 v2 = let
       | initFilter' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
       | initFilter' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
                                                                 fun forcer value  = if (checkType value) = "delay"
-                                                                        then (print (checkType (force value));print " forced \n";(force value))
-                                                                        else (print (checkType value);print "not forced\n";value)
+                                                                        then (force value)
+                                                                        else value
                                                                 val first = (forcer x)
                                                                 val tail =  (forcer xs) 
-                                                                val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
+                                                                val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal first))) (I.VBool true))
                                                                 fun checkEq (I.VBool first) = first
                                                                   | checkEq _ = evalError "Error at filter list - input is not a filter function"
                                                               in
 
                                                                 if (checkEq xApp)
-                                                                  then (print "then \n";I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail)))
-                                                                else (print "else \n"; initFilter' (I.VClosure (n,e,env)) tail)
+                                                                  then I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail))
+                                                                else initFilter' (I.VClosure (n,e,env)) tail
                                                               end
       | initFilter' _ _ =  evalError "initFilter"
     in 
