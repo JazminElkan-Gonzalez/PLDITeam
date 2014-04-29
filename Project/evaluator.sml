@@ -197,24 +197,13 @@ fun primHd2 (I.VCons (v1,v2)) = v1
 
 fun initFilter v1 v2 = let
     fun initFilter' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
-      | initFilter' (I.VClosure (n,e,env)) (I.VNil) = I.VNil
+      | initFilter' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
       | initFilter' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
                                                                 fun forcer value  = if (checkType value) = "delay"
                                                                         then (print (checkType (force value));print " forced \n";(force value))
                                                                         else (print (checkType value);print "not forced\n";value)
-                                                                val newX = (forcer x)
-                                                                val newXs =  (forcer xs) 
-                                                                fun decideTail xsValue = if (checkType xsValue) = "cons" 
-                                                                                then xsValue
-                                                                                else (if (checkType newX) = "cons" 
-                                                                                        then (primTl2 newX)
-                                                                                        else I.VNil)
-
-                                                                val first = (primHd2 newX)
-                                                                val tail =  (decideTail newXs)
-(*                                                                val vFilter = (initFilter' (I.VClosure (n,e,env)) tail)
-*)                                                                fun filterL (I.VCons (tail,I.VNil)) = tail
-                                                                  | filterL _ = evalError "Error at filter list - input is not a list"
+                                                                val first = (forcer x)
+                                                                val tail =  (forcer xs) 
                                                                 val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
                                                                 fun checkEq (I.VBool first) = first
                                                                   | checkEq _ = evalError "Error at filter list - input is not a filter function"
@@ -222,7 +211,7 @@ fun initFilter v1 v2 = let
 
                                                                 if (checkEq xApp)
                                                                   then (print "then \n";I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail)))
-                                                                else (print "else \n"; (initFilter' (I.VClosure (n,e,env)) tail))
+                                                                else (print "else \n"; initFilter' (I.VClosure (n,e,env)) tail)
                                                               end
       | initFilter' _ _ =  evalError "initFilter"
     in 
