@@ -668,7 +668,7 @@ structure Parser =  struct
             (case expect_RBRACKET ts
               of NONE => NONE
               | SOME ts => SOME (I.EVal (I.VList []), ts))
-          | SOME ((e1::es), ts) =>
+          | SOME (es, ts) =>
             (case expect_RBRACKET ts
               of NONE => (case expect_DDOTS ts
                 of NONE => (case expect_BAR ts
@@ -696,17 +696,17 @@ structure Parser =  struct
                                               | SOME ts => let
                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                               in
-                                                SOME (call2 "map" (I.EFun(s, e1)) x, ts)
+                                                SOME (call2 "map" (I.EFun(s, (call1 "hd" es))) x, ts)
                                               end)))
-                                  | SOME ts => SOME ((call2 "map" (I.EFun(s, e1)) e2), ts))))))
+                                  | SOME ts => SOME ((call2 "map" (I.EFun(s, (call1 "hd" es))) e2), ts))))))
                 | SOME ts =>
                   (case parse_expr ts
                     of NONE => NONE
                     | SOME (e2, ts) =>
                       (case expect_RBRACKET ts
                         of NONE => NONE
-                        | SOME ts => SOME (call2 "interval" e1 e2, ts))))
-              | SOME ts => SOME ((e1::es), ts))))
+                        | SOME ts => SOME (call2 "interval" (call1 "hd" es) e2, ts))))
+              | SOME ts => SOME (es, ts))))
   
   and parse_aterm_list ts = 
       choose [parse_aterm_list_ATERM_LIST,
