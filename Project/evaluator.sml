@@ -27,7 +27,7 @@ fun checkType (I.VCons k) = "cons"
     | lookup name ((n,v)::env) = 
         if (n = name) then 
     v
-  else lookup name env 
+  else lookup name env
 
 
   (*
@@ -122,7 +122,7 @@ fun checkType (I.VCons k) = "cons"
     | primIntHelp ks _ _= evalError ("Error in interval function "^(I.stringOfValue (ks)))
 
   and primInterval v1 v2 = let
-      fun primInterval' (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
+      fun primInterval' (I.VInt i) (I.VInt j) = if (j < i ) then I.VNil else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
       | primInterval' _ _ = evalError "Error in interval function"    
     in 
       primInterval' (force v1) (force v2)
