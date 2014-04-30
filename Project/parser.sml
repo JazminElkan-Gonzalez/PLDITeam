@@ -516,7 +516,7 @@ structure Parser =  struct
             of NONE => SOME (call2 "cons" e  (I.EVal (I.VList [])), ts)
              | SOME ts =>
                ((updateSaved (!soFar) "<expr>");(case parse_expr_list ts
-                 of NONE => (wheres := "comma" ;(makeError "expression List" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
+                 of NONE => (wheres := "comma" ;(makeError "expr list" "expr" (!savedSoFar) [T_RBRACKET] [] ts ); NONE)
                   | SOME (es, ts) => SOME (call2 "cons" e es, ts)))))
 
 
@@ -677,7 +677,7 @@ structure Parser =  struct
               of NONE => (if (!wheres) = "comma" then
                         NONE
                 else 
-                        ((makeError "list" "right bracket" [(!soFar)] [] [] [] ) ; NONE))
+                        ((makeError "list" "list entries or right bracket" [(!soFar)] [] [] [] ) ; NONE))
               | SOME ts => SOME (I.EVal (I.VNil), ts))
           | SOME (es, ts) =>
             (case expect_RBRACKET ts
