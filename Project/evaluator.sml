@@ -112,6 +112,7 @@ fun checkType (I.VCons k) = "cons"
 
   fun primTl v1 = let
     fun primTl' (I.VCons (v1,v2)) = v2
+      | primTl' I.VNil = evalError "Error: list is empty"
       | primTl' _ = evalError "Error: Not a list - tail"
   in
      primTl' (force v1)
