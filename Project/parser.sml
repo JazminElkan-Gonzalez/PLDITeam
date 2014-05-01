@@ -371,6 +371,14 @@ structure Parser =  struct
     | findToken _ _ _ = "ERROR: tokens are weird"
 
 
+  fun whatDoNext token [] = false
+    | whatDoNext token (r::rest) =  if r = token then true
+                                        else
+                                         whatDoNext token rest
+  fun nextToken token [] = false
+    | nextToken token (r::rest) = if r = token then true
+                                        else false
+
 
     fun findSym [] = " expected symbol"
         | findSym (t::ts) = (case expect_SYM (t::ts)
@@ -413,7 +421,6 @@ structure Parser =  struct
                         err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorToken beforeTokens (!stringVal) left ts [])
                         else 
                         err := !err ^ "")
-
 
    fun pealSaved [] = []
      | pealSaved (layer::layers) = layer@(pealSaved(layers))
@@ -671,14 +678,21 @@ structure Parser =  struct
 
   and parse_expr_list ts = 
     (case parse_expr ts
-      of NONE => NONE
+      of NONE => (if (nextToken T_RBRACKET ts) then
+                        ((makeError2 "list" "expr" ts (!soFar) "expr");NONE)
+                else if (nextToken T_COMMA ts) then
+                        ((makeError2 "list" "expr" ts (!soFar) "expr");NONE)
+                else if (nextToken T_DCOLON ts) then
+                        ((makeError2 "interval" "expr" ts (!soFar) "expr");NONE)
+                else                        
+                        NONE)
        | SOME (e,ts) => 
          (case expect_COMMA ts
             of NONE => SOME (call2 "cons" e  (I.EVal (I.VList [])), ts)
              | SOME ts =>
-                ((updateSaved (!soFar) "<expr>" [] []); (case parse_expr_list ts
-                 of NONE => ((makeError2 "expr list" "expr" [] (!soFar) "expr"); NONE)
-                  | SOME (es, ts) => SOME (call2 "cons" e es, ts)))))
+                (case parse_expr_list ts
+                 of NONE => NONE
+                  | SOME (es, ts) => SOME (call2 "cons" e es, ts))))
 
   and parse_aterm_MAP ts = 
     (case expect_LBRACKET ts
@@ -687,7 +701,7 @@ structure Parser =  struct
         (case parse_expr_list ts
           of NONE => 
             (case expect_RBRACKET ts
-              of NONE => ((makeError2 "list" "list entries or right bracket" [] (!soFar) "]") ; NONE)
+              of NONE => NONE
               | SOME ts => SOME (I.EVal (I.VNil), ts))
           | SOME (es, ts) =>
             (case expect_RBRACKET ts
