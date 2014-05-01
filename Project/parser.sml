@@ -252,7 +252,7 @@ structure Parser =  struct
    
 
   val bulkerr = ref (lexString "")
-  val soFar = ref (lexString "")
+  val soFar = ref ([]: token list)
   val needToken =  ref ([]: token list list)
   val savedSoFar = ref ([]: token list list)
   val stringVal = ref ([]: string list)    
@@ -298,10 +298,10 @@ structure Parser =  struct
    *)
 
 
-  fun expect_INT ((T_INT i)::ts) = (soFar := !soFar@[T_INT i];SOME (i,ts))
+  fun expect_INT ((T_INT i)::ts) = (soFar := (!soFar)@[T_INT i];SOME (i,ts))
     | expect_INT _ = NONE
 
-  fun expect_SYM ((T_SYM s)::ts) = (soFar := !soFar@[T_SYM s];SOME (s,ts))
+  fun expect_SYM ((T_SYM s)::ts) = (soFar := (!soFar)@[T_SYM s];SOME (s,ts))
     | expect_SYM _ = NONE
 
 
@@ -315,7 +315,7 @@ structure Parser =  struct
 
   fun expect [] ts = SOME ts
     | expect (token::tokens) (t::ts) = if token = t then 
-                                         (soFar := !soFar@[t];expect tokens ts)
+                                         (soFar := (!soFar)@[t];expect tokens ts)
                                        else NONE
     | expect _ _ = NONE
 
@@ -400,12 +400,12 @@ structure Parser =  struct
      | makeErrorLast _ _ = "huh?"
 
    fun makeErrorToken []          []      token      rest _ = (soFar := lexString ""; bulkerr := lexString ""; " ")
-     | makeErrorToken (ts::tss) (e::es) (t::tokens)  (r::rest) previousToken = (print (goThroughList r);(if t = [] then
+     | makeErrorToken (ts::tss) (e::es) (t::tokens)  (r::rest) previousToken = (if t = [] then
                 ((convertToString ts)  ^ e ^ " " ^ "\n" ^ (makeErrorToken tss es tokens rest previousToken))
         else (if tokens = [] then
                 ((convertToString ts)  ^ e ^ " " ^ (findToken [t] r previousToken) ^ "\n" ^ (makeErrorToken tss es tokens rest t))
         else
-                ((convertToString ts)  ^ e ^ " " ^ (findToken (t::tokens) r previousToken) ^ " \n" ^ (makeErrorToken tss es tokens rest t)))))
+                ((convertToString ts)  ^ e ^ " " ^ (findToken (t::tokens) r previousToken) ^ " \n" ^ (makeErrorToken tss es tokens rest t))))
      | makeErrorToken _ (e::es) _ _ _=   ""
      | makeErrorToken _ _ _ _ _=  "huh?"
 
@@ -414,9 +414,9 @@ structure Parser =  struct
      | makeErrorOther _ (e::es) _ =  ""
      | makeErrorOther _ _ _ =  "huh?"
 
-   fun makeError funName errorName beforeTokens [[]] []       [[]] = (print "end \n";checkEType errorName;(err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorLast beforeTokens (!stringVal))))
-     | makeError funName errorName beforeTokens left []       ts = (print "token \n";checkEType errorName; err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorToken beforeTokens (!stringVal) left ts []))
-     | makeError funName errorName beforeTokens [[]] [sToken] [ts] = (print "other \n";checkEType errorName;(if sToken = "sym" then
+   fun makeError funName errorName beforeTokens [[]] []       [[]] = (checkEType errorName;(err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorLast beforeTokens (!stringVal))))
+     | makeError funName errorName beforeTokens left []       ts = (checkEType errorName; err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorToken beforeTokens (!stringVal) left ts []))
+     | makeError funName errorName beforeTokens [[]] [sToken] [ts] = (checkEType errorName;(if sToken = "sym" then
         err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorOther beforeTokens (!stringVal) (findSym ts)) ^ (findSym ts)
         else if sToken = "int" then
         err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (makeErrorOther beforeTokens (!stringVal) (findInt ts)) ^ (findInt ts)
@@ -425,7 +425,8 @@ structure Parser =  struct
         else print "YOU ARE JUST WRONG"; soFar := lexString ""))
      | makeError _ _ _ _ _ _ = (err := "huh?" ; soFar := lexString "")
 
-
+   fun makeError2 funName errorName [] beforeTokens input = err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString beforeTokens) ^ "'" ^ input ^ "'"
+     | makeError2 funName errorName ts beforeTokens  input= err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString beforeTokens) ^ "'" ^ input ^ "'" ^ (convertToString ts)
 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
@@ -560,7 +561,7 @@ structure Parser =  struct
         of NONE => ((makeError "record" "fields" (!savedSoFar) (!needToken)  [] (!tokensLeft) )  ; NONE)
         | SOME (recordList, ts) =>
         (case expect_RBRACE ts
-          of NONE => ((makeError "record" "right brace" [(!soFar)] [] [] [[]] ); NONE)
+          of NONE => ((makeError2 "record" "right brace" [] ((List.last(!savedSoFar))@(!soFar)) "}"); NONE)
           | SOME ts => SOME (I.ERecord recordList, ts)))))
 
   and parse_aterm_FIELD ts =
@@ -568,7 +569,7 @@ structure Parser =  struct
       of NONE => NONE
       | SOME ts =>
       (case expect_SYM ts
-        of NONE => ((makeError "field" "sym" [(!soFar)] [] ["expr"] [ts] ) ; NONE)
+        of NONE => ((makeError2 "field" "sym" ts (!soFar) "sym") ; NONE)
         | SOME (s,ts) =>
         ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
           of NONE => ((makeError "field" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft) ) ; NONE)
@@ -594,10 +595,10 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts
-           of NONE => ((makeError "function" "sym" [(!soFar)] [[T_RARROW]] [] [ts] ); NONE)
+           of NONE => ((makeError2 "function" "sym" ts (!soFar) "sym"); NONE)
             | SOME (s,ts) => 
               (case expect_RARROW ts
-                of NONE => ((makeError "function" "right arrow" [(!soFar)] [[]] ["expr"] [ts] ) ; NONE)
+                of NONE => ((makeError2 "function" "right arrow" ts (!soFar) "->") ; NONE)
                  | SOME ts => 
                    ((updateSaved (!soFar) "<expr>" []);(case parse_expr ts
                      of NONE => ((makeError "function" "expr" (!savedSoFar) (!needToken) [] [[]] ) ; NONE)
@@ -611,7 +612,7 @@ structure Parser =  struct
            of NONE => ((makeError "parentheses" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ) ; NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
-                of NONE => ((makeError "parentheses" "right parentheses" [(!soFar)] [[]] [] [[]] ) ; NONE)
+                of NONE => ((makeError2 "parentheses" "right parentheses" [] ((List.last(!savedSoFar))@(!soFar)) ")") ; NONE)
                 | SOME ts => SOME (e,ts)))))
 
   and parse_aterm_IF ts = 
@@ -622,13 +623,13 @@ structure Parser =  struct
            of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ) ; NONE)
             | SOME (e1,ts) => 
               (case expect_THEN ts
-                of NONE => ((makeError "if" "then" [(!soFar)] [[]] ["expr"] [ts] ) ; NONE)
+                of NONE => ((makeError2 "if" "then" ts ((List.last(!savedSoFar))@(!soFar)) "then" ) ; NONE)
                  | SOME ts => 
                    ((updateSaved (!soFar) "<expr>" [T_ELSE] ts);(case parse_expr ts
                      of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ) ; NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
-                          of NONE => ((makeError "if" "else" [(!soFar)] [[]] ["expr"] [ts] ) ; NONE)
+                          of NONE => ((makeError2 "if" "else" ts ((List.last(!savedSoFar))@(!soFar)) "else" ) ; NONE)
                            | SOME ts => 
                              ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
                                of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft)); NONE)
@@ -639,21 +640,21 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts 
-           of NONE => ((makeError "let" "sym" [(!soFar)] [[T_EQUAL]] [] [ts] ); NONE)
+           of NONE => ((makeError2 "let" "sym" ts (!soFar) "sym"); NONE)
             | SOME (s,ts) => 
               (case expect_EQUAL ts
                 of NONE => (case parse_symList ts
-                        of NONE => ((makeError "let" "decl" [(!soFar)] [[T_IN]] [] [ts] ); NONE)
-                        | SOME (nil,ts) => ((makeError "let" "sym List" [(!soFar)] [[T_EQUAL]] [] [ts] ); NONE)
+                        of NONE => ((makeError2 "let" "decl" ts (!soFar) "decl"); NONE)
+                        | SOME (nil,ts) => ((makeError2 "let" "sym List" ts (!soFar) "sym"); NONE)
                  | SOME ((param::ss),ts) => 
                    (case expect_EQUAL ts
-                     of NONE => ((makeError "let" "equal" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+                     of NONE => ((makeError2 "let" "equal" ts (!soFar) "="); NONE)
                       | SOME ts => 
                         ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
                           of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft)); NONE)
                            |  SOME (e1,ts) => 
                              (case expect_IN ts
-                               of NONE => ((makeError "let" "in" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+                               of NONE => ((makeError2 "let" "in" ts ((List.last(!savedSoFar))@(!soFar)) "in" ); NONE)
                                 | SOME ts => 
                                   ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
                                     of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft) ); NONE)
@@ -669,7 +670,7 @@ structure Parser =  struct
                      of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ); NONE)
                       | SOME (e1,ts) => 
                         (case expect_IN ts
-                          of NONE => ((makeError "let" "in" [(!soFar)] [[]] ["expr"] [ts] ) ; NONE)
+                          of NONE => ((makeError2 "let" "in" ts ((List.last(!savedSoFar))@(!soFar)) "in") ; NONE)
                            | SOME ts => 
                              ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
                                of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft)) ; NONE)
@@ -683,7 +684,7 @@ structure Parser =  struct
             of NONE => SOME (call2 "cons" e  (I.EVal (I.VList [])), ts)
              | SOME ts =>
                 ((updateSaved (!soFar) "<expr>" [] []); (case parse_expr_list ts
-                 of NONE => ((makeError "expr list" "expr" [(!soFar)] [[]]  [] [[]] ); NONE)
+                 of NONE => ((makeError2 "expr list" "expr" [] (!soFar) "expr"); NONE)
                   | SOME (es, ts) => SOME (call2 "cons" e es, ts)))))
 
   and parse_aterm_MAP ts = 
@@ -693,19 +694,19 @@ structure Parser =  struct
         (case parse_expr_list ts
           of NONE => 
             (case expect_RBRACKET ts
-              of NONE => ((makeError "list" "list entries or right bracket" [(!soFar)] [[]] [] [[]] ) ; NONE)
+              of NONE => ((makeError2 "list" "list entries or right bracket" [] (!soFar) "]") ; NONE)
               | SOME ts => SOME (I.EVal (I.VNil), ts))
           | SOME (es, ts) =>
             (case expect_RBRACKET ts
               of NONE => (case expect_DDOTS ts
                 of NONE => (case expect_BAR ts
-                  of NONE => ((makeError "map or filter" "bar" [(!soFar)] [[]] ["sym"] [ts] ) ; NONE)
+                  of NONE => ((makeError2 "map or filter" "bar" ts (!soFar) "|") ; NONE)
                   | SOME ts =>
                     (case expect_SYM ts
-                      of NONE => ((makeError "map or filter" "sym" [(!soFar)] [[T_LARROW]] [] [ts] ) ; NONE)
+                      of NONE => ((makeError2 "map or filter" "sym" ts (!soFar) "sym") ; NONE)
                       | SOME (s,ts) =>
                         (case expect_LARROW ts
-                          of NONE => ((makeError "map or filter" "left arrow" [(!soFar)] [[]] ["expr"] [ts] ) ; NONE)
+                          of NONE => ((makeError2 "map or filter" "left arrow" ts (!soFar) "<-") ; NONE)
                           | SOME ts =>
                             ((updateSaved (!soFar) "<expr>" [T_RBRACKET] ts);(case parse_expr ts
                               of NONE => ((makeError "map or filter" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft)) ; NONE)
@@ -713,13 +714,13 @@ structure Parser =  struct
                                 (case expect_RBRACKET ts
                                   of NONE =>
                                     (case expect_COMMA ts
-                                      of NONE => ((makeError "map or filter" "right bracket or comma" [(!soFar)] [[]] [] [ts]) ; NONE)
+                                      of NONE => ((makeError2 "map or filter" "right bracket or comma" ts ((List.last(!savedSoFar))@(!soFar)) "]") ; NONE)
                                       | SOME ts =>
                                         ((updateSaved (!soFar) "<expr>" [T_RBRACKET] ts);(case parse_expr ts
                                           of NONE => ((makeError "filter" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft) ) ; NONE)
                                           | SOME (e3, ts) =>
                                             (case expect_RBRACKET ts
-                                              of NONE => ((makeError "filter" "right bracket" [(!soFar)] [[]] [] [[]] ) ; NONE)
+                                              of NONE => ((makeError2 "filter" "right bracket" [] ((List.last(!savedSoFar))@(!soFar)) "]") ; NONE)
                                               | SOME ts => let
                                                 val x = (call2 "filter" (I.EFun(s,e3)) e2)
                                               in
@@ -731,7 +732,7 @@ structure Parser =  struct
                     of NONE => ((makeError "interval" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ) ; NONE)
                     | SOME (e2, ts) =>
                       (case expect_RBRACKET ts
-                        of NONE => ((makeError "interval" "right bracket" [(!soFar)] [[]] [] [[]] ); NONE)
+                        of NONE => ((makeError2 "interval" "right bracket" [] ((List.last(!savedSoFar))@(!soFar)) "]"); NONE)
                         | SOME ts => SOME (call2 "interval" (call1 "hd" es) e2, ts)))))
               | SOME ts => SOME (es, ts))))
   
@@ -760,44 +761,44 @@ structure Parser =  struct
             of NONE => ((makeError "match" "expr" (!savedSoFar) (!needToken)  [] (!tokensLeft) ); NONE)
              | SOME (e1,ts) =>
                (case expect_WITH ts
-                of NONE => ((makeError "match" "with" [(!soFar)] [[T_LBRACKET]] [] [ts] ); NONE)
+                of NONE => ((makeError2 "match" "with" ts ((List.last(!savedSoFar))@(!soFar)) "with"); NONE)
                  | SOME ts =>
                    (case expect_LBRACKET ts
-                      of NONE => ((makeError "match" "left bracket" [(!soFar)] [[T_RBRACKET]] [] [ts] ); NONE)
+                      of NONE => ((makeError2 "match" "left bracket" ts ((List.last(!savedSoFar))@(!soFar)) "["); NONE)
                        | SOME ts =>
                          (case expect_RBRACKET ts
-                            of NONE => ((makeError "match" "right bracket" [(!soFar)] [[T_RARROW]] [] [ts] ); NONE)
+                            of NONE => ((makeError2 "match" "right bracket" ts ((List.last(!savedSoFar))@(!soFar))"]" ); NONE)
                              | SOME ts =>
                                (case expect_RARROW ts
-                                  of NONE => ((makeError "match" "right arrow" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+                                  of NONE => ((makeError2 "match" "right arrow" ts ((List.last(!savedSoFar))@(!soFar)) "->"); NONE)
                                    | SOME ts =>
                                      ((updateSaved (!soFar) "<expr>" [T_BAR] ts);(case parse_expr ts
                                       of NONE => ((makeError "match" "expr" (!savedSoFar) (!needToken) [] (!tokensLeft) ); NONE)
                                        | SOME (e2, ts) =>
                                          (case expect_BAR ts
-                                            of NONE => ((makeError "match" "bar" [(!soFar)] [[]] ["sym"] [ts] ); NONE)
+                                            of NONE => ((makeError2 "match" "bar" ts ((List.last(!savedSoFar))@(!soFar)) "|"); NONE)
                                              | SOME ts =>
                                                (case expect_SYM ts
-                                                  of NONE => ((makeError "match" "sym" [(!soFar)] [[T_DCOLON]] [] [ts] ); NONE)
+                                                  of NONE => ((makeError2 "match" "sym" ts ((List.last(!savedSoFar))@(!soFar)) "sym"); NONE)
                                                    | SOME (sym1,ts) =>
                                                      (case expect_DCOLON ts
-                                                        of NONE => ((makeError "match" "double colon" [(!soFar)] [[]] ["sym"] [ts] ); NONE)
+                                                        of NONE => ((makeError2 "match" "double colon" ts ((List.last(!savedSoFar))@(!soFar)) "::"); NONE)
                                                          | SOME ts =>
                                                            (case expect_SYM ts
-                                                              of NONE => ((makeError "match" "sym" [(!soFar)] [[T_RARROW]] [] [ts] ); NONE)
+                                                              of NONE => ((makeError2 "match" "sym" ts ((List.last(!savedSoFar))@(!soFar)) "sym"); NONE)
                                                                | SOME (sym2,ts) =>
                                                                  (case expect_RARROW ts
-                                                                    of NONE => ((makeError "match" "right arrow" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+                                                                    of NONE => ((makeError2 "match" "right arrow" ts ((List.last(!savedSoFar))@(!soFar)) "->"); NONE)
                                                                      | SOME ts =>
                                                                        ((updateSaved (!soFar) "<expr>" []);(case parse_expr ts
-                                                                          of NONE => ((makeError "match" "expr" [(!soFar)] [[]] [] [[]] ); NONE)
+                                                                          of NONE => ((makeError "match" "expr" (!savedSoFar) [[]] [] [[]] ); NONE)
                                                                            | SOME (e3, ts) =>
 
                                                                            let
                                                                              val s1 =  (call1 "hd" e1)
                                                                              val s2 =  (call1 "tl" e1)
                                                                             in
-                                                                              SOME (I.EIf ( (call2 "equal" e1 (I.EVal (I.VNil))) , e2 , I.ELet( sym1, s1 , I.ELet(sym2, s2, e3))), ts)
+                                                                              SOME (I.EIf ((call2 "equal" e1 (I.EVal (I.VNil))) , e2 , I.ELet( sym1, s1 , I.ELet(sym2, s2, e3))), ts)
                                                                             end
 
                                                                            ))))))))))))))))
@@ -813,29 +814,29 @@ structure Parser =  struct
       of NONE => NONE
        | SOME ts => 
          (case expect_SYM ts
-           of NONE => ((makeError "def" "sym" [(!soFar)] [[T_EQUAL]] [] [ts] ); NONE)
+           of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
           | SOME (s,ts) =>
             (case expect [T_EQUAL] ts
-              of NONE => ((makeError "def" "equal" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+              of NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE)
               | SOME ts => 
                 (case parse_expr ts
-                  of NONE => ((makeError "def" "expr" [(!soFar)] [[]] [] [[]] ); NONE)
+                  of NONE => ((makeError2 "def" "expr" [] (!soFar) "expr"); NONE)
                   | SOME (e,ts) => SOME (DDef (s,e),ts)))))
    fun decl_fun ts = 
      (case expect [T_DEF] ts
        of NONE => NONE
        | SOME ts =>
          (case expect_SYM ts
-           of NONE => ((makeError "def" "sym" [(!soFar)] [[]] ["sym"] [ts] ); NONE)
+           of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
            | SOME (s,ts) => 
              (case expect_SYM ts
-               of NONE => ((makeError "def" "sym" [(!soFar)] [[T_EQUAL]] [] [ts] ); NONE)
+               of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
                | SOME (param,ts) => 
                  (case expect [T_EQUAL] ts
-                   of NONE => ((makeError "def" "equal" [(!soFar)] [[]] ["expr"] [ts] ); NONE)
+                   of NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE)
                    | SOME ts => 
                      (case parse_expr ts 
-                       of NONE => ((makeError "def" "expr" [(!soFar)] [[]] [] [[]] ); NONE)
+                       of NONE => ((makeError2 "def" "expr" [] (!soFar) "expr"); NONE)
                        | SOME (e,ts) => 
                           SOME (DDef (s,I.ELetFun (s,param,e,(I.EIdent s))),ts))))))
    fun decl_expr ts = 
