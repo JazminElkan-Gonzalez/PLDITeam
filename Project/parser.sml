@@ -35,6 +35,7 @@ structure Parser =  struct
 
   exception Parsing of string
 
+(*Globals used for keeping track of error messages*)
   val err = ref "unknown error"
   val funErr = ref ""
 
@@ -120,7 +121,7 @@ structure Parser =  struct
     | stringOfToken T_WITH = "T_WITH"
     | stringOfToken T_DEF = "T_DEF"
 
-
+(*translate tokens to symbols used in our language to spit back at the user*)
       fun stringOfTokenEnglish T_LET = "let"
     | stringOfTokenEnglish T_IN = "in"
     | stringOfTokenEnglish (T_SYM s) = s
@@ -250,13 +251,17 @@ structure Parser =  struct
   fun lexString str = lex (explode str)
                       
    
-
-  val bulkerr = ref (lexString "")
+(*global that keeps track of current layer of tokens*)
   val soFar = ref ([]: token list)
-  val needToken =  ref ([]: token list list)
+(*global that keeps track of every layer of passed tokens*)
   val savedSoFar = ref ([]: token list list)
-  val stringVal = ref ([]: string list)    
+(*global that keeps track of the first token on the "following" side for each layer*)
+  val needToken =  ref ([]: token list list)
+(*global that keeps track of the missing part for each layer*)  
+  val stringVal = ref ([]: string list)   
+(*global that keeps track of all following tokens for each layer*)
   val tokensLeft = ref ([]: token list list)
+(*global used to make sure "single token" errors are not over written by nesting*)
   val singleError = ref false
 
 
@@ -297,7 +302,7 @@ structure Parser =  struct
    *             T_LBRACKET expr T_BAR T_SYM T_LARROW expr T_COMMA expr T_RBRACKET
    *)
 
-
+(*changed expect functions so that they track the tokens that have passed using the "soFar" global*)
   fun expect_INT ((T_INT i)::ts) = (soFar := (!soFar)@[T_INT i];SOME (i,ts))
     | expect_INT _ = NONE
 
@@ -350,62 +355,57 @@ structure Parser =  struct
   fun expect_MATCH ts = expect [T_MATCH] ts
   fun expect_WITH ts = expect [T_WITH] ts
                           
-
+(*function used to convert a list of tokens to a "readable" output*)
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
-
-  fun findTokenBackwards [tk] [] = "... " ^(stringOfTokenEnglish tk)
-    | findTokenBackwards [] ts = convertToString ts
-    | findTokenBackwards tk (t::ts) = (case (expect tk (t::ts))
-                                        of NONE =>
-                                         (stringOfTokenEnglish t) ^ (findTokenBackwards tk ts)
-                                | SOME ts => "")
-    | findTokenBackwards _ _ = "ERROR: tokens are weird"
-
-  fun findToken ([tk]::tokens) [] prev = " expected "^  "'" ^(stringOfTokenEnglish tk) ^ "'"
-    | findToken (tk::tokens) (r::rest) prev = (case (expect tk (r::rest))
-                                        of NONE =>
-                                         findToken (tk::tokens) rest prev
-                                | SOME ts => findTokenBackwards prev (r::rest))
-    | findToken _ _ _ = "ERROR: tokens are weird"
-
-
-  fun whatDoNext token [] = false
-    | whatDoNext token (r::rest) =  if r = token then true
-                                        else
-                                         whatDoNext token rest
   fun nextToken token [] = false
     | nextToken token (r::rest) = if r = token then true
                                         else false
+  val hold =  ref ([]: token list)
+  val skipped = ref false
+  fun hasToken token [] stuff= false
+    | hasToken token ([]::rest) stuff = (hasToken token rest stuff)
+    | hasToken token ([r]::rest) stuff = if token = r then (skipped := true; hold := stuff;true)
+                                        else (hasToken token rest stuff)
 
+(*findToken helper function:
+              finds the trailing end of each layer to use as a cut off point
+              Example:
+                  let x = (10 + (3 +)) in x + x
+                  findTokenBackwards for the layer (10 + ) looks for the "in" token *)
+  fun findTokenBackwards [tk] [] = "... " ^(stringOfTokenEnglish tk)
+    | findTokenBackwards [] ts = convertToString ts
+    | findTokenBackwards [tk] (t::ts) =  if (tk = t) then  ""
+                                      else
+                                         (stringOfTokenEnglish t) ^ " "^ (findTokenBackwards [tk] ts)
+    | findTokenBackwards _ _ = "ERROR: tokens are weird"
 
-    fun findSym [] = " expected symbol"
-        | findSym (t::ts) = (case expect_SYM (t::ts)
-                        of NONE => 
-                                findSym ts
-                        | SOME (s,ts) => (convertToString (t::ts)))
-    fun findInt [] = " expected Int"
-        |findInt (t::ts) = (case expect_INT (t::ts)
-                        of NONE => 
-                                findInt ts
-                        | SOME (s,ts) => (convertToString (t::ts)))
-    fun exprString ts = "<expr>"
-
-    fun goThroughList [] = "empty \n"
-        | goThroughList t = (convertToString t)
+(*Function used to start the trailing end of the error message at each layer*)
+  fun findToken ([tk]::tokens) [] prev = (if (!skipped) then
+                                                  (findTokenBackwards prev (!hold)) 
+                                                else 
+                                                  " expected "^  "'" ^(stringOfTokenEnglish tk) ^ "'")
+    | findToken ([tk]::tokens) (r::rest) prev= if (tk = r) then
+                                          (if (hasToken tk tokens (r::rest)) then
+                                            findToken ([tk]::tokens) rest prev
+                                          else
+                                        (stringOfTokenEnglish r) ^ (findTokenBackwards prev rest))
+                                      else
+                                         findToken ([tk]::tokens) rest prev
+    | findToken _ _ _ = "ERROR: tokens are wei"
 
    fun updateSaved tokenList stVal need rest = (soFar := lexString ""; savedSoFar := (!savedSoFar)@[tokenList] ; stringVal := (!stringVal)@[stVal]; needToken := (!needToken)@[need]; tokensLeft := (!tokensLeft)@[rest]) 
 
-   fun makeErrorLast [] [] = (soFar := lexString ""; bulkerr := lexString "";" ")
+   fun makeErrorLast [] [] = (soFar := lexString "";" ")
      | makeErrorLast (ts::tss) (e::es) = ((convertToString ts)  ^ e ^ " " ^ "\n" ^ (makeErrorLast tss es))
      | makeErrorLast _ (e::es) = ""
      | makeErrorLast _ _ = "huh?"
 
-   fun makeErrorToken []          []      token      rest _ = (soFar := lexString ""; bulkerr := lexString ""; " ")
+   fun makeErrorToken []          []      token      rest _ = (soFar := lexString ""; " ")
      | makeErrorToken (ts::tss) (e::es) (t::tokens)  (r::rest) previousToken = (if t = [] then
                 ((convertToString ts)  ^ e ^ " " ^ "\n" ^ (makeErrorToken tss es tokens rest previousToken))
-        else (if tokens = [] then
+          else (if tokens = [] then
                 ((convertToString ts)  ^ e ^ " " ^ (findToken [t] r previousToken) ^ "\n" ^ (makeErrorToken tss es tokens rest t))
         else
                 ((convertToString ts)  ^ e ^ " " ^ (findToken (t::tokens) r previousToken) ^ " \n" ^ (makeErrorToken tss es tokens rest t))))
@@ -863,7 +863,7 @@ structure Parser =  struct
 
   fun parseDecl [] = DSpace
     | parseDecl ts = 
-      (err := "unknown error"; soFar := lexString  "";savedSoFar := ([]: token list list); singleError := false; needToken := ([]: token list list);tokensLeft := ([]: token list list); stringVal := []; bulkerr := lexString "";(case parse_decl ts
+      (err := "unknown error"; soFar := lexString  "";skipped := false; hold := ([]: token list);savedSoFar := ([]: token list list); singleError := false; needToken := ([]: token list list);tokensLeft := ([]: token list list); stringVal := []; (case parse_decl ts
 
         of SOME (d,[]) => d
          | SOME (_,left)  => (funErr := "Function Call Failed \n";(parseDecl left))
