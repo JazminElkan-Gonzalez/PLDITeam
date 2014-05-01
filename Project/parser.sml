@@ -263,6 +263,13 @@ structure Parser =  struct
   val tokensLeft = ref ([]: token list list)
 (*global used to make sure "single token" errors are not over written by nesting*)
   val singleError = ref false
+(*global used for when multiple of the same parse trees are present in the same function*)
+  val hold =  ref ([]: token list)
+  (*global used to keep track of when the messging "skips over" an internal parse tree of the same type
+            Example
+                  let y = (let x = 10 + in x + x) in y + y
+                  a "skip" would occur over the  "in x + x" to the "in y + y"*)
+  val skipped = ref false
 
 
 
@@ -359,11 +366,21 @@ structure Parser =  struct
   fun convertToString [] = ""
     | convertToString (t::ts) = (stringOfTokenEnglish t) ^ " " ^ (convertToString ts)
 
+(*used to check what the next token in the list is. used for list error message generation*)
   fun nextToken token [] = false
     | nextToken token (r::rest) = if r = token then true
                                         else false
-  val hold =  ref ([]: token list)
-  val skipped = ref false
+
+(*used to check if a token string contains a token. 
+    Used to see if there are nested forms of the same tree for end error generation. 
+      Parameters:
+            token = token, the token that we are trying to find
+            rest = token list, what we are looking through
+            stuff = toke list, a saved version of this instance of the token. Used later to generate 
+                        error messaging when we need the last copy
+      Example
+            let y = (let x = 10 + in x + x) in y + y
+             there are two let trees here*)
   fun hasToken token [] stuff= false
     | hasToken token ([]::rest) stuff = (hasToken token rest stuff)
     | hasToken token ([r]::rest) stuff = if token = r then (skipped := true; hold := stuff;true)
@@ -381,7 +398,8 @@ structure Parser =  struct
                                          (stringOfTokenEnglish t) ^ " "^ (findTokenBackwards [tk] ts)
     | findTokenBackwards _ _ = "ERROR: tokens are weird"
 
-(*Function used to start the trailing end of the error message at each layer*)
+(*Function used to start the trailing end of the error message at each layer
+    uses above functions to look for duplecates, jump to the correct layer, and know when each layer stops*)
   fun findToken ([tk]::tokens) [] prev = (if (!skipped) then
                                                   (findTokenBackwards prev (!hold)) 
                                                 else 
@@ -393,10 +411,13 @@ structure Parser =  struct
                                         (stringOfTokenEnglish r) ^ (findTokenBackwards prev rest))
                                       else
                                          findToken ([tk]::tokens) rest prev
-    | findToken _ _ _ = "ERROR: tokens are wei"
+    | findToken _ _ _ = "ERROR: tokens are weid"
 
-   fun updateSaved tokenList stVal need rest = (soFar := lexString ""; savedSoFar := (!savedSoFar)@[tokenList] ; stringVal := (!stringVal)@[stVal]; needToken := (!needToken)@[need]; tokensLeft := (!tokensLeft)@[rest]) 
-
+(*helper function for makeError 
+        is used when the error in question occured at the end of the token list rather then somewhere in the middle
+          Parameters:
+              (ts::tss)  = token list list, each layers tokens leading up to the error
+               (e::es) = string list, the official error name at each layer  *)
    fun makeErrorLast [] [] = (soFar := lexString "";" ")
      | makeErrorLast (ts::tss) (e::es) = ((convertToString ts)  ^ e ^ " " ^ "\n" ^ (makeErrorLast tss es))
      | makeErrorLast _ (e::es) = ""
@@ -428,6 +449,9 @@ structure Parser =  struct
    fun makeError2 funName errorName [] beforeTokens input = (singleError := true ;err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString ((pealSaved (!savedSoFar))@beforeTokens)) ^ "'" ^ input ^ "'")
      | makeError2 funName errorName ts beforeTokens  input= (singleError := true ;err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString ((pealSaved (!savedSoFar))@beforeTokens)) ^ "'" ^ input ^ "'" ^ (convertToString ts))
 
+(*Used to save each layer of a given line as a separate entity*)
+   fun updateSaved tokenList stVal need rest = (soFar := lexString ""; savedSoFar := (!savedSoFar)@[tokenList] ; stringVal := (!stringVal)@[stVal]; needToken := (!needToken)@[need]; tokensLeft := (!tokensLeft)@[rest]) 
+ 
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
       (case parser ts
@@ -646,25 +670,25 @@ structure Parser =  struct
                 of NONE => (case parse_symList ts
                         of NONE => ((makeError2 "let" "decl" ts (!soFar) "decl"); NONE)
                         | SOME (nil,ts) => ((makeError2 "let" "sym List" ts (!soFar) "sym"); NONE)
-                 | SOME ((param::ss),ts) => 
-                   (case expect_EQUAL ts
-                     of NONE => ((makeError2 "let" "equal" ts (!soFar) "="); NONE)
-                      | SOME ts => 
-                        ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
-                          of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
-                           |  SOME (e1,ts) => 
-                             (case expect_IN ts
-                               of NONE => ((makeError2 "let" "in" ts (!soFar) "in" ); NONE)
-                                | SOME ts => 
-                                  ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
-                                    of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
-                                    | SOME (e2,ts) => let 
-                                        fun paramFun (paramS::nil) = I.EFun (paramS,e1)
-                                          | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
-                                          | paramFun _ = e1
-                                        in
-                                         SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
-                                        end)))))))
+                        | SOME ((param::ss),ts) => 
+                          (case expect_EQUAL ts
+                            of NONE => ((makeError2 "let" "equal" ts (!soFar) "="); NONE)
+                             | SOME ts => 
+                               ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
+                                 of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
+                                  |  SOME (e1,ts) => 
+                                    (case expect_IN ts
+                                      of NONE => ((makeError2 "let" "in" ts (!soFar) "in" ); NONE)
+                                       | SOME ts => 
+                                         ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
+                                           of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                                           | SOME (e2,ts) => let 
+                                               fun paramFun (paramS::nil) = I.EFun (paramS,e1)
+                                                 | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
+                                                 | paramFun _ = e1
+                                               in
+                                                SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
+                                               end)))))))
                  | SOME ts => 
                    ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
                      of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
