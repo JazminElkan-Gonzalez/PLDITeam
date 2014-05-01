@@ -12,12 +12,22 @@ structure Evaluator = struct
   exception Evaluation of string
 
   fun evalError msg = raise Evaluation msg
+fun checkType (I.VCons k) = "cons"
+      | checkType (I.VList k) = "list"
+      | checkType  (I.VInt k) = "int"
+      | checkType  (I.VBool k) =  "bool"
+      | checkType (I.VClosure k) =  "Closure"
+      | checkType (I.VRecClosure k) = "RecClosure"
+      | checkType (I.VRecord k) = "record"
+      | checkType (I.VNil) = "nil"
+      | checkType (I.VDelayed k) = "delay"
+
        
  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs")
     | lookup name ((n,v)::env) = 
         if (n = name) then 
     v
-  else lookup name env 
+  else lookup name env
 
 
   (*
@@ -54,7 +64,7 @@ structure Evaluator = struct
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
     | evalIf _ _ _ _ = evalError "Error at evaluating if statement - input is not a boolean"
-		       
+                       
   and evalLet env id v body = eval ((id,v)::env) body
 
   and evalLetFun env id param expr body = let
@@ -79,20 +89,33 @@ structure Evaluator = struct
    *   Primitive operations
    *)
 
-  fun primCons v1 v2 = I.VCons (v1,v2)
+  fun primCons v1 v2 = 
+        let 
+            fun primCons' v1 v2 =
+                                 (if checkType v2 = "list"
+                                        then (I.VCons (v1,v2))
+                                        else (if checkType v2 = "cons" 
+                                                then (I.VCons (v1,v2)) 
+                                                else (if  checkType v2 = "nil"
+                                                then   (I.VCons (v1,v2))
+                                                else I.VCons (v1, (I.VCons (v2,I.VNil))))))
+        in
+            primCons' (force v1) (force v2)
+        end
     
   fun primHd v1 = let
     fun primHd' (I.VCons (v1,v2)) = v1
-      | primHd' _ = evalError "Error: Not a list"
+      | primHd' _ = evalError "Error: Not a list - head"
   in
     primHd' (force v1)
   end
 
   fun primTl v1 = let
     fun primTl' (I.VCons (v1,v2)) = v2
-      | primTl' _ = evalError "Error: Not a list"
+      | primTl' I.VNil = evalError "Error: list is empty"
+      | primTl' _ = evalError "Error: Not a list - tail"
   in
-    primTl' (force v1)
+     primTl' (force v1)
   end
 
   fun primIntHelp (I.VList ks) (I.VInt j) (I.VInt newI) = if ((newI - 1) = j ) then (I.VList ks) else (primIntHelp (primCons (I.VInt j) (I.VList ks)) (I.VInt (j-1)) (I.VInt (newI)))
@@ -100,7 +123,7 @@ structure Evaluator = struct
     | primIntHelp ks _ _= evalError ("Error in interval function "^(I.stringOfValue (ks)))
 
   and primInterval v1 v2 = let
-      fun primInterval' (I.VInt i) (I.VInt j) = if (j < i ) then (I.VList []) else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
+      fun primInterval' (I.VInt i) (I.VInt j) = if (j < i ) then I.VNil else (primIntHelp (I.VList []) (I.VInt j) (I.VInt i))
       | primInterval' _ _ = evalError "Error in interval function"    
     in 
       primInterval' (force v1) (force v2)
@@ -108,7 +131,7 @@ structure Evaluator = struct
 
   fun primPlus v1 v2 = let
     fun primPlus' (I.VInt a) (I.VInt b) = I.VInt (a+b)
-      | primPlus' _ _ = evalError "Addition is not possible"
+      | primPlus' _ b = (print (checkType b); evalError "Addition is not possible")
   in
     primPlus' (force v1) (force v2)
   end
@@ -128,26 +151,28 @@ structure Evaluator = struct
   end
 
 
-  fun primEqHelper (I.VList []) (I.VList []) = true
-     | primEqHelper (I.VList (x::xs)) (I.VList []) = false
-     | primEqHelper (I.VList []) (I.VList (x::xs)) = false
-     | primEqHelper (I.VList (x::xs)) (I.VList (y::ys)) = 
+  fun primEqHelper (I.VList []) (I.VList []) =  true
+     | primEqHelper I.VNil I.VNil = true
+     | primEqHelper (I.VCons (x,xs)) (I.VNil) = false
+     | primEqHelper (I.VNil) (I.VCons (x,xs)) = false
+     | primEqHelper (I.VCons(x,xs)) (I.VCons (y,ys)) = 
     (case (primEq x y) 
         of (I.VBool false) => false 
-        | (I.VBool true) => (primEqHelper (I.VList xs) (I.VList ys))
+        | (I.VBool true) => (primEqHelper xs ys)
         | _ => evalError "This error should not happen. Start over")
      | primEqHelper _ _ = evalError "You are comparing apples to tofu"
+
 
   and primEq v1 v2 = let
     fun primEq' (I.VInt a) (I.VInt b) = I.VBool (a=b)
       | primEq' (I.VBool a) (I.VBool b) = I.VBool (a=b)
       | primEq' (I.VNil) (I.VNil) = I.VBool true
-      | primEq' (I.VList (xs)) (I.VList (ys)) = I.VBool (primEqHelper (I.VList xs) (I.VList ys)) 
-      | primEq' _ _ = I.VBool false
+      | primEq' (I.VList []) (I.VList []) = I.VBool true
+      | primEq' (I.VCons xs) (I.VCons ys) = I.VBool (primEqHelper (I.VCons xs) (I.VCons ys))
+      | primEq' xs ys = I.VBool false
   in
     primEq' (force v1) (force v2)
   end
-    
     
   fun primLess v1 v2 = let
     fun primLess' (I.VInt a) (I.VInt b) = I.VBool (a<b)
@@ -157,35 +182,52 @@ structure Evaluator = struct
   end
 
 
-  (* 
-   *   Initial environment (already in a form suitable for the environment)
-   *)
-
-  fun initMap (I.VClosure (n,e,env)) (I.VList []) = I.VList []
-    | initMap (I.VClosure (n,e,env)) (I.VList (x::nil)) = I.VList [eval env (I.EApp (I.EFun (n,e),I.EVal x))]
-    | initMap (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
-                                                           val vMap = (initMap (I.VClosure (n,e,env)) (I.VList (xs)))
-                                                           fun mapL (I.VList xs) = xs
-                                                             | mapL _ = evalError "Error at map - input is not a list"
+  fun initMap v1 v2 = let 
+        fun initMap' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
+          | initMap' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
+          | initMap' (I.VClosure (n,e,env)) I.VNil = I.VNil
+          | initMap' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
+                                                           fun forcer value  = if (checkType value) = "delay"
+                                                                   then (force value)
+                                                                        else value
+                                                           val first = (forcer x)
+                                                           val tail = (forcer xs)
+                                                           val entryVal = (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
                                                          in
-                                                            I.VList ((eval env (I.EApp (I.EFun (n,e),I.EVal x)))::(mapL vMap))
+                                                            if (checkType first) = "nil" 
+                                                            then 
+                                                               (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
+                                                            else     
+                                                                I.VCons (entryVal,(initMap' (I.VClosure (n,e,env)) tail))
                                                          end
-    | initMap _ _ = evalError "Error at map - input is not a mapping function"
+          | initMap' _ _ = evalError "Error at map - input is not a mapping function"
+        in
+          initMap' (force v1) (force v2)
+        end
 
-  fun initFilter (I.VClosure (n,e,env)) (I.VList []) = I.VList ([])
-    | initFilter (I.VClosure (n,e,env)) (I.VList (x::xs)) = let
-                                                              val vFilter = (initFilter (I.VClosure (n,e,env)) (I.VList (xs)))
-                                                              fun filterL (I.VList xs) = xs
-                                                                | filterL _ = evalError "Error at filter list - input is not a list"
-                                                              val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal x))) (I.VBool true))
-                                                              fun checkEq (I.VBool x) = x
-                                                                | checkEq _ = evalError "Error at filter list - input is not a filter function"
-                                                            in
-                                                              if (checkEq xApp)
-                                                                then I.VList (x::(filterL vFilter))
-                                                              else I.VList (filterL vFilter)
-                                                            end
-    | initFilter _ _ = evalError "initFilter"
+
+fun initFilter v1 v2 = let
+    fun initFilter' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
+      | initFilter' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
+      | initFilter' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
+                                                                fun forcer value  = if (checkType value) = "delay"
+                                                                        then (force value)
+                                                                        else value
+                                                                val first = (forcer x)
+                                                                val tail =  (forcer xs) 
+                                                                val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal first))) (I.VBool true))
+                                                                fun checkEq (I.VBool first) = first
+                                                                  | checkEq _ = evalError "Error at filter list - input is not a filter function"
+                                                              in
+
+                                                                if (checkEq xApp)
+                                                                  then I.VCons (first,(initFilter' (I.VClosure (n,e,env)) tail))
+                                                                else initFilter' (I.VClosure (n,e,env)) tail
+                                                              end
+      | initFilter' _ _ =  evalError "initFilter"
+    in 
+      initFilter' (force v1) (force v2)
+    end
   
   val initialEnv = 
       [("add", I.VClosure ("a", 
@@ -220,7 +262,7 @@ structure Evaluator = struct
                                                  I.EIdent "a",
                                                  I.EIdent "b")),
                            [])),
-       ("nil", I.VList []),
+       ("nil", I.VNil),
        ("map", I.VClosure ("f", I.EFun("xs",
                                   I.EPrimCall2 (initMap,
                                                 I.EIdent "f",

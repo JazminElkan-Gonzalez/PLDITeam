@@ -30,6 +30,11 @@ structure Shell = struct
       in
         "["^(str v1 v2 d)
       end
+    | stringOfValue' (I.VRecord fvs) d = let
+       fun str (s,v) = String.concat [s, "=", stringOfValue v d]
+      in
+        String.concat ["{", String.concatWith "," (map str fvs), "}"]
+      end
     | stringOfValue' (I.VDelayed _) d = "<delayed>"
 
   fun pr l = print ((String.concatWith " " l)^"\n")
