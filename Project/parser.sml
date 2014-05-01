@@ -1,5 +1,5 @@
 (* 
- *   CODE FOR HOMEWORK 4
+ *   Code for project. modified from homework 4 and lecture 10
  *)
 
 
@@ -385,9 +385,14 @@ structure Parser =  struct
     | hasToken token ([]::rest) stuff = (hasToken token rest stuff)
     | hasToken token ([r]::rest) stuff = if token = r then (skipped := true; hold := stuff;true)
                                         else (hasToken token rest stuff)
+    | hasToken _ _ _ = (print "Internal Error: we done messed up at hasToken"; false)
+
 
 (*findToken helper function:
               finds the trailing end of each layer to use as a cut off point
+              parameters:
+                  [tk] = token list, the token we are trying to end at
+                  (t::ts) = token list, all the tokens found after the beginning of the end
               Example:
                   let x = (10 + (3 +)) in x + x
                   findTokenBackwards for the layer (10 + ) looks for the "in" token *)
@@ -396,10 +401,14 @@ structure Parser =  struct
     | findTokenBackwards [tk] (t::ts) =  if (tk = t) then  ""
                                       else
                                          (stringOfTokenEnglish t) ^ " "^ (findTokenBackwards [tk] ts)
-    | findTokenBackwards _ _ = "ERROR: tokens are weird"
+    | findTokenBackwards _ _ = (print "Internal Error: we done messed up at findTokenBackwards"; "")
 
 (*Function used to start the trailing end of the error message at each layer
-    uses above functions to look for duplecates, jump to the correct layer, and know when each layer stops*)
+    uses above functions to look for duplecates, jump to the correct layer, and know when each layer stops
+              parameters:
+                  ([tk]::tokens) = token list list, this contains the beginning of the end for each later
+                                    where tk is the beginning of the end for the current layer
+                  (r::rest) = token list, contains all of the tokens left in the current layer (after error)  *)
   fun findToken ([tk]::tokens) [] prev = (if (!skipped) then
                                                   (findTokenBackwards prev (!hold)) 
                                                 else 
@@ -413,7 +422,7 @@ structure Parser =  struct
                                          findToken ([tk]::tokens) rest prev
     | findToken _ _ _ = "ERROR: tokens are weid"
 
-(*helper function for makeError 
+(*helper function for makeErrorNested 
         is used when the error in question occured at the end of the token list rather then somewhere in the middle
           Parameters:
               (ts::tss)  = token list list, each layers tokens leading up to the error
@@ -423,6 +432,15 @@ structure Parser =  struct
      | makeErrorLast _ (e::es) = ""
      | makeErrorLast _ _ = "huh?"
 
+(*helper function for makeError
+        Used when the error is not at the end of the token list
+          parameters:
+              (ts::tss) = token list list, contains all tokens leading up to the error for each layer
+              (e::es) = string list, contains the official error name at each layer
+              (t::tokens) = token list list, contains the beginning of the end for each of the layers
+              (r::rest) = token list list, contains all tokens that follow the error for each of the layers
+              previousToken  = token, contains the beginning of the end for the previous layer
+                            necessary for finding the end of the end for the current layer.  *)
    fun makeErrorToken []          []      token      rest _ = (soFar := lexString ""; " ")
      | makeErrorToken (ts::tss) (e::es) (t::tokens)  (r::rest) previousToken = (if t = [] then
                 ((convertToString ts)  ^ e ^ " " ^ "\n" ^ (makeErrorToken tss es tokens rest previousToken))
@@ -433,24 +451,43 @@ structure Parser =  struct
      | makeErrorToken _ (e::es) _ _ _=   ""
      | makeErrorToken _ _ _ _ _=  "huh?"
 
-
-   fun makeError funName errorName beforeTokens [[]] [[]] = (if (!singleError) = false then 
+(* function for making error Messages of nested functions
+          Parameters: 
+                funName = string, name of the primary expression that failed
+                errorName = string, way in which the primarly expression failed
+                beforeTokens = token list list, contains all tokens leading up to the error for each layer
+                left = token list list, contains the beginning of the end for each of the layers
+                ts = token list list, contains all tokens that follow the error for each of the layers*)
+   fun makeErrorNested funName errorName beforeTokens [[]] [[]] = (if (!singleError) = false then 
                         err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorLast beforeTokens (!stringVal))
                         else
                         err := !err ^ "")
-     | makeError funName errorName beforeTokens left  ts = (if (!singleError) = false then 
+     | makeErrorNested funName errorName beforeTokens left  ts = (if (!singleError) = false then 
                         err := "error in " ^ funName  ^ "- expected " ^ errorName  ^ "\n" ^ (makeErrorToken beforeTokens (!stringVal) left ts [])
                         else 
                         err := !err ^ "")
-
+(*Function used to flatten a list of lists
+          used for flattening all nested layers
+          needed for making error messages for none nested functions*)
    fun pealSaved [] = []
      | pealSaved (layer::layers) = layer@(pealSaved(layers))
-
+(*function for making error messages of non-nested functions
+            Parameters:
+                funName = string, name of the primary expression that failed
+                errorName = string, way in which the primarly expression failed
+                ts = token list, contains all tokens that follow the error
+                beforeTokens = token list list, contains all tokens leading up to the error for each layer
+                input = string, version of the errorName that is syntactically correct*)
    fun makeError2 funName errorName [] beforeTokens input = (singleError := true ;err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString ((pealSaved (!savedSoFar))@beforeTokens)) ^ "'" ^ input ^ "'")
      | makeError2 funName errorName ts beforeTokens  input= (singleError := true ;err := "error in " ^ funName  ^ "- expected " ^ errorName ^  "\n"  ^ (convertToString ((pealSaved (!savedSoFar))@beforeTokens)) ^ "'" ^ input ^ "'" ^ (convertToString ts))
 
-(*Used to save each layer of a given line as a separate entity*)
-   fun updateSaved tokenList stVal need rest = (soFar := lexString ""; savedSoFar := (!savedSoFar)@[tokenList] ; stringVal := (!stringVal)@[stVal]; needToken := (!needToken)@[need]; tokensLeft := (!tokensLeft)@[rest]) 
+(*Used to save each layer of a given line as a separate entity. 
+    clears temperary storage used for keeping track of the current layer
+          Parameters: 
+            stVal = string, the current layers error message
+            need = token list, the current layers token that indicates the beginning of the end
+            rest = token list, the tokens that follow the error on the current list*)
+   fun updateSaved stVal need rest = (savedSoFar := (!savedSoFar)@[(!soFar)] ; soFar := lexString ""; stringVal := (!stringVal)@[stVal]; needToken := (!needToken)@[need]; tokensLeft := (!tokensLeft)@[rest]) 
  
   fun choose [] ts = NONE
     | choose (parser::parsers) ts = 
@@ -483,7 +520,7 @@ structure Parser =  struct
                 (case parse_eterm ts
                   of NONE => NONE
                    | SOME (e2,ts) => SOME (call2 "equal" e1 e2, ts))))
-(* Question 3b *)
+
   and parse_fields ts =
     (case expect_SYM ts
       of NONE => SOME ([],ts)
@@ -501,7 +538,7 @@ structure Parser =  struct
               of NONE => NONE 
               | SOME (e2,ts) => SOME ((s1,e1)::e2,ts) )))))
 
-(* Question 1a *)
+
   and parse_symList ts = 
         (case expect_SYM ts 
           of NONE => NONE
@@ -518,8 +555,8 @@ structure Parser =  struct
            (case expect_DCOLON ts
              of NONE => SOME (e1,ts)
               | SOME ts => 
-                ((updateSaved (!soFar) "<term>" [] []);(case parse_cterm ts
-                  of NONE => ((makeError "Append List" "C term" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                ((updateSaved "<term>" [] []);(case parse_cterm ts
+                  of NONE => ((makeErrorNested "Append List" "C term" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
                    | SOME (e2,ts) => SOME (call2 "cons" e1 e2, ts)))))
 
 
@@ -532,12 +569,12 @@ structure Parser =  struct
                 (case expect_MINUS ts
                   of NONE => SOME (e1,ts)
                    | SOME ts => 
-                     ((updateSaved (!soFar) "<term>" [] []);(case parse_term ts
-                       of NONE => ((makeError "math" "term" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                     ((updateSaved "<term>" [] []);(case parse_term ts
+                       of NONE => ((makeErrorNested "math" "term" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
                         | SOME (e2,ts) => SOME (call2 "sub" e1 e2, ts))))
               | SOME ts => 
-                ((updateSaved (!soFar) "<term>" [] []);(case parse_term ts
-                  of NONE => ((makeError "math" "term" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
+                ((updateSaved "<term>" [] []);(case parse_term ts
+                  of NONE => ((makeErrorNested "math" "term" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
                    | SOME (e2,ts) => SOME (call2 "add" e1 e2, ts)))))
 
 
@@ -576,13 +613,13 @@ structure Parser =  struct
       of NONE => NONE
        | SOME (i,ts) => SOME (I.EVal (I.VInt i),ts))
 
-  (* question 3b *)
+
   and parse_aterm_RECORD ts =
     (case expect_LBRACE ts
       of NONE => NONE
       | SOME ts => 
-      ((updateSaved (!soFar) "<field>" [T_RBRACE] ts);(case parse_fields ts
-        of NONE => ((makeError "record" "fields" (!savedSoFar) (!needToken) (!tokensLeft) )  ; NONE)
+      ((updateSaved "<field>" [T_RBRACE] ts);(case parse_fields ts
+        of NONE => ((makeErrorNested "record" "fields" (!savedSoFar) (!needToken) (!tokensLeft) )  ; NONE)
         | SOME (recordList, ts) =>
         (case expect_RBRACE ts
           of NONE => ((makeError2 "record" "right brace" [] (!soFar) "}"); NONE)
@@ -595,8 +632,8 @@ structure Parser =  struct
       (case expect_SYM ts
         of NONE => ((makeError2 "field" "sym" ts (!soFar) "sym") ; NONE)
         | SOME (s,ts) =>
-        ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
-          of NONE => ((makeError "field" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+        ((updateSaved "<expr>" [] []);(case parse_expr ts
+          of NONE => ((makeErrorNested "field" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
           | SOME (e,ts) => SOME (I.EField (e,s) , ts)))))
 
   and parse_aterm_true ts = 
@@ -624,16 +661,16 @@ structure Parser =  struct
               (case expect_RARROW ts
                 of NONE => ((makeError2 "function" "right arrow" ts (!soFar) "->") ; NONE)
                  | SOME ts => 
-                   ((updateSaved (!soFar) "<expr>" []);(case parse_expr ts
-                     of NONE => ((makeError "function" "expr" (!savedSoFar) (!needToken) [[]] ) ; NONE)
+                   ((updateSaved "<expr>" []);(case parse_expr ts
+                     of NONE => ((makeErrorNested "function" "expr" (!savedSoFar) (!needToken) [[]] ) ; NONE)
                       | SOME (e,ts) => SOME (I.EFun (s,e), ts))))))
 
   and parse_aterm_PARENS ts = 
     (case expect_LPAREN ts
       of NONE => NONE
        | SOME ts =>
-         ((updateSaved (!soFar) "<expr>" [T_RPAREN] ts);(case parse_expr ts
-           of NONE => ((makeError "parentheses" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+         ((updateSaved "<expr>" [T_RPAREN] ts);(case parse_expr ts
+           of NONE => ((makeErrorNested "parentheses" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
             | SOME (e,ts) => 
               (case expect_RPAREN ts
                 of NONE => ((makeError2 "parentheses" "right parentheses" [] (!soFar) ")") ; NONE)
@@ -643,20 +680,20 @@ structure Parser =  struct
     (case expect_IF ts
       of NONE => NONE
        | SOME ts => 
-         ((updateSaved (!soFar) "<expr>" [T_THEN] ts);(case parse_expr ts
-           of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+         ((updateSaved "<expr>" [T_THEN] ts);(case parse_expr ts
+           of NONE => ((makeErrorNested "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
             | SOME (e1,ts) => 
               (case expect_THEN ts
                 of NONE => ((makeError2 "if" "then" ts (!soFar) "then" ) ; NONE)
                  | SOME ts => 
-                   ((updateSaved (!soFar) "<expr>" [T_ELSE] ts);(case parse_expr ts
-                     of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+                   ((updateSaved "<expr>" [T_ELSE] ts);(case parse_expr ts
+                     of NONE => ((makeErrorNested "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
                       | SOME (e2,ts) => 
                         (case expect_ELSE ts
                           of NONE => ((makeError2 "if" "else" ts (!soFar) "else" ) ; NONE)
                            | SOME ts => 
-                             ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
-                               of NONE => ((makeError "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
+                             ((updateSaved "<expr>" [] []);(case parse_expr ts
+                               of NONE => ((makeErrorNested "if" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
                                 | SOME (e3,ts) => SOME (I.EIf (e1,e2,e3),ts))))))))))
 
   and parse_aterm_LET ts = 
@@ -674,14 +711,14 @@ structure Parser =  struct
                           (case expect_EQUAL ts
                             of NONE => ((makeError2 "let" "equal" ts (!soFar) "="); NONE)
                              | SOME ts => 
-                               ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
-                                 of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
+                               ((updateSaved "<expr>" [T_IN] ts);(case parse_expr ts
+                                 of NONE => ((makeErrorNested "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)); NONE)
                                   |  SOME (e1,ts) => 
                                     (case expect_IN ts
                                       of NONE => ((makeError2 "let" "in" ts (!soFar) "in" ); NONE)
                                        | SOME ts => 
-                                         ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
-                                           of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                                         ((updateSaved "<expr>" [] []);(case parse_expr ts
+                                           of NONE => ((makeErrorNested "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
                                            | SOME (e2,ts) => let 
                                                fun paramFun (paramS::nil) = I.EFun (paramS,e1)
                                                  | paramFun (paramS::ss) = I.EFun (paramS,paramFun ss)
@@ -690,16 +727,16 @@ structure Parser =  struct
                                                 SOME (I.ELetFun (s,param,paramFun ss,e2),ts)
                                                end)))))))
                  | SOME ts => 
-                   ((updateSaved (!soFar) "<expr>" [T_IN] ts);(case parse_expr ts
-                     of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                   ((updateSaved "<expr>" [T_IN] ts);(case parse_expr ts
+                     of NONE => ((makeErrorNested "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
                       | SOME (e1,ts) => 
                         (case expect_IN ts
                           of NONE => ((makeError2 "let" "in" ts (!soFar) "in") ; NONE)
                            | SOME ts => 
-                             ((updateSaved (!soFar) "<expr>" [] []);(case parse_expr ts
-                               of NONE => ((makeError "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)) ; NONE)
+                             ((updateSaved "<expr>" [] []);(case parse_expr ts
+                               of NONE => ((makeErrorNested "let" "expr" (!savedSoFar) (!needToken) (!tokensLeft)) ; NONE)
                                 | SOME (e2,ts) => SOME (I.ELet (s,e1,e2),ts)))))))))
-
+(*changed parse experesion list so it can distinguish between a list or a filter when there is an error near its beginning*)
   and parse_expr_list ts = 
     (case parse_expr ts
       of NONE => (if (nextToken T_RBRACKET ts) then
@@ -718,6 +755,7 @@ structure Parser =  struct
                  of NONE => NONE
                   | SOME (es, ts) => SOME (call2 "cons" e es, ts))))
 
+(*combined map, interval, filter, list*)
   and parse_aterm_MAP ts = 
     (case expect_LBRACKET ts
       of NONE => NONE
@@ -739,16 +777,16 @@ structure Parser =  struct
                         (case expect_LARROW ts
                           of NONE => ((makeError2 "map or filter" "left arrow" ts (!soFar) "<-") ; NONE)
                           | SOME ts =>
-                            ((updateSaved (!soFar) "<expr>" [T_RBRACKET] ts);(case parse_expr ts
-                              of NONE => ((makeError "map or filter" "expr" (!savedSoFar) (!needToken) (!tokensLeft)) ; NONE)
+                            ((updateSaved "<expr>" [T_RBRACKET] ts);(case parse_expr ts
+                              of NONE => ((makeErrorNested "map or filter" "expr" (!savedSoFar) (!needToken) (!tokensLeft)) ; NONE)
                               | SOME (e2, ts) =>
                                 (case expect_RBRACKET ts
                                   of NONE =>
                                     (case expect_COMMA ts
                                       of NONE => ((makeError2 "map or filter" "right bracket or comma" ts (!soFar) "]") ; NONE)
                                       | SOME ts =>
-                                        ((updateSaved (!soFar) "<expr>" [T_RBRACKET] ts);(case parse_expr ts
-                                          of NONE => ((makeError "filter" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+                                        ((updateSaved "<expr>" [T_RBRACKET] ts);(case parse_expr ts
+                                          of NONE => ((makeErrorNested "filter" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
                                           | SOME (e3, ts) =>
                                             (case expect_RBRACKET ts
                                               of NONE => ((makeError2 "filter" "right bracket" [] (!soFar) "]") ; NONE)
@@ -759,8 +797,8 @@ structure Parser =  struct
                                               end))))
                                   | SOME ts => SOME ((call2 "map" (I.EFun(s, (call1 "hd" es))) e2), ts)))))))
                 | SOME ts =>
-                  ((updateSaved (!soFar) "<expr>" [T_RBRACKET] ts);(case parse_expr ts
-                    of NONE => ((makeError "interval" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
+                  ((updateSaved "<expr>" [T_RBRACKET] ts);(case parse_expr ts
+                    of NONE => ((makeErrorNested "interval" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ) ; NONE)
                     | SOME (e2, ts) =>
                       (case expect_RBRACKET ts
                         of NONE => ((makeError2 "interval" "right bracket" [] (!soFar) "]"); NONE)
@@ -782,14 +820,12 @@ structure Parser =  struct
 
   and parse_aterm_list_EMPTY ts = SOME ([], ts)
 
-
-  (*Question 2d*)
   and parse_aterm_MATCH ts =
     (case expect_MATCH ts
       of NONE => NONE
        | SOME ts =>
-         ((updateSaved (!soFar) "<expr>" [T_WITH] ts);(case parse_expr ts
-            of NONE => ((makeError "match" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+         ((updateSaved "<expr>" [T_WITH] ts);(case parse_expr ts
+            of NONE => ((makeErrorNested "match" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
              | SOME (e1,ts) =>
                (case expect_WITH ts
                 of NONE => ((makeError2 "match" "with" ts (!soFar) "with"); NONE)
@@ -803,8 +839,8 @@ structure Parser =  struct
                                (case expect_RARROW ts
                                   of NONE => ((makeError2 "match" "right arrow" ts (!soFar) "->"); NONE)
                                    | SOME ts =>
-                                     ((updateSaved (!soFar) "<expr>" [T_BAR] ts);(case parse_expr ts
-                                      of NONE => ((makeError "match" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
+                                     ((updateSaved "<expr>" [T_BAR] ts);(case parse_expr ts
+                                      of NONE => ((makeErrorNested "match" "expr" (!savedSoFar) (!needToken) (!tokensLeft) ); NONE)
                                        | SOME (e2, ts) =>
                                          (case expect_BAR ts
                                             of NONE => ((makeError2 "match" "bar" ts (!soFar) "|"); NONE)
@@ -821,8 +857,8 @@ structure Parser =  struct
                                                                  (case expect_RARROW ts
                                                                     of NONE => ((makeError2 "match" "right arrow" ts (!soFar) "->"); NONE)
                                                                      | SOME ts =>
-                                                                       ((updateSaved (!soFar) "<expr>" []);(case parse_expr ts
-                                                                          of NONE => ((makeError "match" "expr" (!savedSoFar) [[]] [[]] ); NONE)
+                                                                       ((updateSaved "<expr>" []);(case parse_expr ts
+                                                                          of NONE => ((makeErrorNested "match" "expr" (!savedSoFar) [[]] [[]] ); NONE)
                                                                            | SOME (e3, ts) =>
 
                                                                            let

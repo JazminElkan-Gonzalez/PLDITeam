@@ -9,7 +9,9 @@ structure Shell = struct
   (*   Specialized function to force values for printing in the shell
    *   but only force up to d elements of lists
    *)
-
+(*shell was combined from homework 4 and lecture 10 as such changes were added
+        all values were added to stringOfValue' except for T.VList
+        why? because i didnt notice until i changed everything into cons. and by then well :frown: *)
   fun stringOfValue v d = stringOfValue' (E.force v) d
 
   and stringOfValue' (I.VInt i) d = Int.toString i
