@@ -105,14 +105,18 @@ fun checkType (I.VCons k) = "cons"
     
   fun primHd v1 = let
     fun primHd' (I.VCons (v1,v2)) = v1
-      | primHd' _ = evalError "Error: Not a list - head"
+      | primHd' I.VNil = evalError "empty at PrimHd"
+      | primHd' (I.VList []) = I.VNil 
+      | primHd' (I.VList (x::xs)) = x
+      | primHd' a = evalError "Error: Not a list - head"
   in
     primHd' (force v1)
   end
 
   fun primTl v1 = let
     fun primTl' (I.VCons (v1,v2)) = v2
-      | primTl' I.VNil = evalError "Error: list is empty"
+      | primTl' I.VNil = I.VNil
+      | primTl' (I.VList []) = I.VNil
       | primTl' _ = evalError "Error: Not a list - tail"
   in
      primTl' (force v1)
@@ -131,7 +135,9 @@ fun checkType (I.VCons k) = "cons"
 
   fun primPlus v1 v2 = let
     fun primPlus' (I.VInt a) (I.VInt b) = I.VInt (a+b)
-      | primPlus' _ b = (print (checkType b); evalError "Addition is not possible")
+      | primPlus' I.VNil (I.VInt b) = I.VInt(b)
+      | primPlus' (I.VInt a) I.VNil = I.VInt(a)
+      | primPlus' a b = (print (checkType a); evalError "Addition is not possible")
   in
     primPlus' (force v1) (force v2)
   end
