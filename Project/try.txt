@@ -1,3 +1,4 @@
-def x = 5
+def x = 10
 
-def y = 1 + 
+let y = x in y + 10
+

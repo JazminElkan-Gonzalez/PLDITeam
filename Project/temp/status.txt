@@ -1,0 +1,4 @@
+Parsing error: error in let- expected expr
+let b = <expr>in b 
+let b = 10 + <term>in b 
+ 

@@ -58,7 +58,7 @@ structure Shell = struct
           | E.Evaluation msg => (pr ["Evaluation error:", msg]; env)
           | IO.Io _ => (pr ["I/O error"]; env)
 
-  fun test fenv file = let 
+  fun checkFile fenv file = let 
           val ins = TextIO.openIn (file)
           val initEnv = E.initialEnv @ fenv
           fun loop ins env = 
