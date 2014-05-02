@@ -1,1 +1,1 @@
-def double a = a + a
+let x = 1 + in x
