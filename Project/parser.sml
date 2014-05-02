@@ -417,7 +417,7 @@ structure Parser =  struct
                                           (if (hasToken tk tokens (r::rest)) then
                                             findToken ([tk]::tokens) rest prev
                                           else
-                                        (stringOfTokenEnglish r) ^ (findTokenBackwards prev rest))
+                                        (stringOfTokenEnglish r) ^" "^ (findTokenBackwards prev rest))
                                       else
                                          findToken ([tk]::tokens) rest prev
     | findToken _ _ _ = "ERROR: tokens are weid"
