@@ -61,7 +61,7 @@ structure Evaluator = struct
       in 
     eval new_env body
       end
-    | evalApp _ _ _ = evalError "Cannot apply non-functional value"
+    | evalApp _ a b = evalError ("Cannot apply "^(I.stringOfValue a)^" to "^(I.stringOfValue (force b)))
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
@@ -115,7 +115,7 @@ structure Evaluator = struct
       | primHd' I.VNil = evalError "empty at PrimHd"
       | primHd' (I.VList []) = I.VNil 
       | primHd' (I.VList (x::xs)) = x
-      | primHd' a = evalError "Error: Not a list - head"
+      | primHd' a = evalError "Not a list - head"
   in
     primHd' (force v1)
   end
@@ -125,7 +125,7 @@ structure Evaluator = struct
     fun primTl' (I.VCons (v1,v2)) = v2
       | primTl' I.VNil = I.VNil
       | primTl' (I.VList []) = I.VNil
-      | primTl' _ = evalError "Error: Not a list - tail"
+      | primTl' _ = evalError "Not a list - tail"
   in
      primTl' (force v1)
   end
