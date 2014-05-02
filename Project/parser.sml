@@ -876,7 +876,7 @@ structure Parser =  struct
 
      
  fun parse_decl ts = let
-   fun decl_val ts = 
+   fun decl_val_fun ts = 
     (case expect [T_DEF] ts
       of NONE => NONE
        | SOME ts => 
@@ -884,34 +884,27 @@ structure Parser =  struct
            of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
           | SOME (s,ts) =>
             (case expect [T_EQUAL] ts
-              of NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE)
+              of NONE => 
+               (case expect_SYM ts
+                 of SOME (param,ts) => 
+                  (case expect [T_EQUAL] ts
+                    of NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE)
+                    | SOME ts => 
+                      (case parse_expr ts 
+                        of NONE => ((makeError2 "def" "expr" [] (!soFar) "expr"); NONE)
+                        | SOME (e,ts) => 
+                           SOME (DDef (s,I.ELetFun (s,param,e,(I.EIdent s))),ts)))
+                 | NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE))
               | SOME ts => 
                 (case parse_expr ts
                   of NONE => ((makeError2 "def" "expr" [] (!soFar) "expr"); NONE)
                   | SOME (e,ts) => SOME (DDef (s,e),ts)))))
-   fun decl_fun ts = 
-     (case expect [T_DEF] ts
-       of NONE => NONE
-       | SOME ts =>
-         (case expect_SYM ts
-           of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
-           | SOME (s,ts) => 
-             (case expect_SYM ts
-               of NONE => ((makeError2 "def" "sym" ts (!soFar) "sym"); NONE)
-               | SOME (param,ts) => 
-                 (case expect [T_EQUAL] ts
-                   of NONE => ((makeError2 "def" "equal" ts (!soFar) "="); NONE)
-                   | SOME ts => 
-                     (case parse_expr ts 
-                       of NONE => ((makeError2 "def" "expr" [] (!soFar) "expr"); NONE)
-                       | SOME (e,ts) => 
-                          SOME (DDef (s,I.ELetFun (s,param,e,(I.EIdent s))),ts))))))
    fun decl_expr ts = 
      (case parse_expr ts
        of NONE => NONE
        | SOME (e,ts) => SOME (DExpr e, ts))
   in
-    choose [decl_val, decl_fun, decl_expr] ts
+    choose [decl_val_fun, decl_expr] ts
   end
 
 
