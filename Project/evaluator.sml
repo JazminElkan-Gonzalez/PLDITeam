@@ -147,7 +147,7 @@ structure Evaluator = struct
     fun primPlus' (I.VInt a) (I.VInt b) = I.VInt (a+b)
       | primPlus' I.VNil (I.VInt b) = I.VInt(b)
       | primPlus' (I.VInt a) I.VNil = I.VInt(a)
-      | primPlus' a b = (print (checkType a); evalError "Addition is not possible")
+      | primPlus' a b = evalError "Addition is not possible"
   in
     primPlus' (force v1) (force v2)
   end

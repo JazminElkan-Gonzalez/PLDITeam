@@ -88,7 +88,7 @@ namespace WindowsFormsApplication1
 
         private void underlineError()
         {
-            int i = richTextBox2.Find("Evaluation error");
+            int i = richTextBox2.Find("error"); 
             if (i == -1)
                 i = richTextBox2.Find("Parsing error");
 
