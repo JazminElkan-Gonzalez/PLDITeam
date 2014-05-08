@@ -9,7 +9,9 @@ structure Shell = struct
   (*   Specialized function to force values for printing in the shell
    *   but only force up to d elements of lists
    *)
-
+(*shell was combined from homework 4 and lecture 10 as such changes were added
+        all values were added to stringOfValue' except for T.VList
+        why? because i didnt notice until i changed everything into cons. and by then well :frown: *)
   fun stringOfValue v d = stringOfValue' (E.force v) d
 
   and stringOfValue' (I.VInt i) d = Int.toString i
@@ -37,35 +39,31 @@ structure Shell = struct
       end
     | stringOfValue' (I.VDelayed _) d = "<delayed>"
 
-  fun pr l = print ((String.concatWith " " l)^"\n")
-
-  fun process env str = let 
-          val ts = P.lexString str
-        in 
-          case (P.parseDecl ts)
-            of P.DDef (s,e) => let
-                val v = E.eval env e
-                val _ = pr ["Definition",s,"added to environment"]
-              in
-                ((s,v)::env)
-              end
-            | P.DSpace => env
-            | P.DExpr e => let
-                val v = E.eval env e
-                val _ = pr [stringOfValue v 10]
-              in
-                env
-              end
-        end
-
-
-            handle P.Parsing msg => (pr ["Parsing error:", msg]; env)
-          | E.Evaluation msg => (pr ["Evaluation error:", msg]; env)
-          | IO.Io _ => (pr ["I/O error"]; env)
-
-  fun test fenv file = let 
+  fun checkFile fenv file = let 
           val ins = TextIO.openIn (file)
           val initEnv = E.initialEnv @ fenv
+          fun pr l = print ((String.concatWith " " l)^"\n")
+          fun process env str = let 
+              val ts = P.lexString str
+            in 
+              case (P.parseDecl ts)
+                of P.DDef (s,e) => let
+                    val v = E.eval env e
+                    val _ = pr ["Definition",s,"added to environment"]
+                  in
+                    ((s,v)::env)
+                  end
+                | P.DSpace => env
+                | P.DExpr e => let
+                    val v = E.eval env e
+                    val _ = pr [stringOfValue v 10]
+                  in
+                    env
+                  end
+            end
+          handle P.Parsing msg => (pr ["Parsing error:", msg]; env)
+          | E.Evaluation msg => (pr ["Evaluation error:", msg]; env)
+          | IO.Io _ => (pr ["I/O error"]; env)
           fun loop ins env = 
             case TextIO.inputLine ins
               of SOME line => loop ins (process env line)

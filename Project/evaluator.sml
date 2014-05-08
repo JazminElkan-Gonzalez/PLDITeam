@@ -1,5 +1,5 @@
 (* 
- *   Evaluator for final project.
+ *   Evaluator for final project. To make the evaluator homework 4 was combined with code from lecture 10. 
  *)
 
 
@@ -12,15 +12,17 @@ structure Evaluator = struct
   exception Evaluation of string
 
   fun evalError msg = raise Evaluation msg
-fun checkType (I.VCons k) = "cons"
-      | checkType (I.VList k) = "list"
-      | checkType  (I.VInt k) = "int"
-      | checkType  (I.VBool k) =  "bool"
-      | checkType (I.VClosure k) =  "Closure"
-      | checkType (I.VRecClosure k) = "RecClosure"
-      | checkType (I.VRecord k) = "record"
-      | checkType (I.VNil) = "nil"
-      | checkType (I.VDelayed k) = "delay"
+
+ (*Type Checking Function Used for Debugging*)   
+  fun checkType (I.VCons k) = "cons"
+    | checkType (I.VList k) = "list"
+    | checkType (I.VInt k) = "int"
+    | checkType (I.VBool k) =  "bool"
+    | checkType (I.VClosure k) =  "Closure"
+    | checkType (I.VRecClosure k) = "RecClosure"
+    | checkType (I.VRecord k) = "record"
+    | checkType (I.VNil) = "nil"
+    | checkType (I.VDelayed k) = "delay"
 
        
  fun lookup (name:string) [] = evalError ("There is no function called "^name^", please check your spelling or your inputs")
@@ -59,7 +61,7 @@ fun checkType (I.VCons k) = "cons"
       in 
     eval new_env body
       end
-    | evalApp _ _ _ = evalError "Cannot apply non-functional value"
+    | evalApp _ a b = evalError ("Cannot apply "^(I.stringOfValue a)^" to "^(I.stringOfValue (force b)))
 
   and evalIf env (I.VBool true) f g = eval env f
     | evalIf env (I.VBool false) f g = eval env g
@@ -89,31 +91,41 @@ fun checkType (I.VCons k) = "cons"
    *   Primitive operations
    *)
 
+(*Prim Cons was changed so that cons 1 2 = [1,2] rather then [1]*)
   fun primCons v1 v2 = 
         let 
             fun primCons' v1 v2 =
-                                 (if checkType v2 = "list"
-                                        then (I.VCons (v1,v2))
-                                        else (if checkType v2 = "cons" 
-                                                then (I.VCons (v1,v2)) 
-                                                else (if  checkType v2 = "nil"
-                                                then   (I.VCons (v1,v2))
-                                                else I.VCons (v1, (I.VCons (v2,I.VNil))))))
+                                (if checkType v2 = "list" then
+                                  (I.VCons (v1,v2))
+                                else 
+                                  (if checkType v2 = "cons" then 
+                                      (I.VCons (v1,v2)) 
+                                    else 
+                                      (if  checkType v2 = "nil" then
+                                          (I.VCons (v1,v2))
+                                        else 
+                                          (I.VCons (v1, (I.VCons (v2,I.VNil)))))))
         in
             primCons' (force v1) (force v2)
         end
     
+    (*Changed primHd so that it works with Lists and Cons*)
   fun primHd v1 = let
     fun primHd' (I.VCons (v1,v2)) = v1
-      | primHd' _ = evalError "Error: Not a list - head"
+      | primHd' I.VNil = evalError "empty at PrimHd"
+      | primHd' (I.VList []) = I.VNil 
+      | primHd' (I.VList (x::xs)) = x
+      | primHd' a = evalError "Not a list - head"
   in
     primHd' (force v1)
   end
 
+(*Changed primTl so that it works with Lists and Cons*)
   fun primTl v1 = let
     fun primTl' (I.VCons (v1,v2)) = v2
-      | primTl' I.VNil = evalError "Error: list is empty"
-      | primTl' _ = evalError "Error: Not a list - tail"
+      | primTl' I.VNil = I.VNil
+      | primTl' (I.VList []) = I.VNil
+      | primTl' _ = evalError "Not a list - tail"
   in
      primTl' (force v1)
   end
@@ -129,15 +141,23 @@ fun checkType (I.VCons k) = "cons"
       primInterval' (force v1) (force v2)
     end
 
+(*Changed primPlus so that it can add an empty value with an int.
+    Needed for let fun *)
   fun primPlus v1 v2 = let
     fun primPlus' (I.VInt a) (I.VInt b) = I.VInt (a+b)
-      | primPlus' _ b = (print (checkType b); evalError "Addition is not possible")
+      | primPlus' I.VNil (I.VInt b) = I.VInt(b)
+      | primPlus' (I.VInt a) I.VNil = I.VInt(a)
+      | primPlus' a b = evalError "Addition is not possible"
   in
     primPlus' (force v1) (force v2)
   end
 
+(*Changed primMinus so that it can add an empty value with an int.
+    Needed for let fun *)
   fun primMinus v1 v2 = let
     fun primMinus' (I.VInt a) (I.VInt b) = I.VInt (a-b)
+      | primMinus' I.VNil (I.VInt b) = I.VInt(b)
+      | primMinus' (I.VInt a) I.VNil = I.VInt(a)
       | primMinus' _ _ = evalError "Subtraction is not possible"
   in
     primMinus' (force v1) (force v2)
@@ -181,17 +201,12 @@ fun checkType (I.VCons k) = "cons"
     primLess' (force v1) (force v2)
   end
 
-
+(*CHanged Map and Filter to play nice with delay and cons*)
   fun initMap v1 v2 = let 
         fun initMap' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
           | initMap' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
           | initMap' (I.VClosure (n,e,env)) I.VNil = I.VNil
-          | initMap' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
-                                                           fun forcer value  = if (checkType value) = "delay"
-                                                                   then (force value)
-                                                                        else value
-                                                           val first = (forcer x)
-                                                           val tail = (forcer xs)
+          | initMap' (I.VClosure (n,e,env)) (I.VCons (first,tail)) = let
                                                            val entryVal = (eval env (I.EApp (I.EFun (n,e),I.EVal first)))
                                                          in
                                                             if (checkType first) = "nil" 
@@ -209,12 +224,7 @@ fun checkType (I.VCons k) = "cons"
 fun initFilter v1 v2 = let
     fun initFilter' (I.VClosure (n,e,env)) (I.VCons (I.VNil,I.VNil)) = I.VCons (I.VNil,I.VNil)
       | initFilter' (I.VClosure (n,e,env)) (I.VList a) = I.VNil
-      | initFilter' (I.VClosure (n,e,env)) (I.VCons (x,xs)) = let
-                                                                fun forcer value  = if (checkType value) = "delay"
-                                                                        then (force value)
-                                                                        else value
-                                                                val first = (forcer x)
-                                                                val tail =  (forcer xs) 
+      | initFilter' (I.VClosure (n,e,env)) (I.VCons (first,tail)) = let
                                                                 val xApp = (primEq (eval env (I.EApp (I.EFun (n,e),I.EVal first))) (I.VBool true))
                                                                 fun checkEq (I.VBool first) = first
                                                                   | checkEq _ = evalError "Error at filter list - input is not a filter function"
